@@ -1,0 +1,63 @@
+diff --git a/build/index.js b/build/index.js
+index bbdc07b3c1f1b8e447cd8b593c6e60fbcbd8db1f..fc14b495e6d10b7a3b4d1fe72841f99129182ec2 100644
+--- a/build/index.js
++++ b/build/index.js
+@@ -68,8 +68,8 @@ class Stderr extends EventEmitter {
+     }
+ }
+ class Stdin extends EventEmitter {
+-    constructor() {
+-        super(...arguments);
++    constructor(options = {}) {
++        super();
+         // eslint-disable-next-line @typescript-eslint/naming-convention
+         Object.defineProperty(this, "isTTY", {
+             enumerable: true,
+@@ -77,14 +77,33 @@ class Stdin extends EventEmitter {
+             writable: true,
+             value: true
+         });
++        Object.defineProperty(this, "data", {
++            enumerable: true,
++            configurable: true,
++            writable: true,
++            value: null
++        });
+         Object.defineProperty(this, "write", {
+             enumerable: true,
+             configurable: true,
+             writable: true,
+             value: (data) => {
+-                this.emit('data', data);
++                this.data = data;
++                this.emit('readable');
++                // this.emit('data', data);
+             }
+         });
++        Object.defineProperty(this, "read", {
++            enumerable: true,
++            configurable: true,
++            writable: true,
++            value: () => {
++                const data = this.data;
++                this.data = null;
++                return data;
++            }
++        });
++        this.isTTY = options.isTTY ?? true;
+     }
+     setEncoding() {
+         // Do nothing
+@@ -98,6 +117,12 @@ class Stdin extends EventEmitter {
+     pause() {
+         // Do nothing
+     }
++    ref() {
++        // Do nothing
++    }
++    unref() {
++        // Do nothing
++    }
+ }
+ const instances = [];
+ export const render = (tree) => {

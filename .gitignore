@@ -1,0 +1,7 @@
+.yarn
+.vscode
+.history
+node_modules
+coverage
+
+pub.key
