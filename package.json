@@ -54,6 +54,12 @@
     "typecheck",
     "lint-staged"
   ],
+  "prettier": {
+    "trailingComma": "all",
+    "tabWidth": 2,
+    "semi": true,
+    "singleQuote": false
+  },
   "lint-staged": {
     "*.{j,t}s{,x}": [
       "prettier --write",
