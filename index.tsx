@@ -8,7 +8,11 @@ import { face as encryptFace } from "./faces/encrypt";
 import { face as decryptFace } from "./faces/decrypt";
 import { Face } from "./faces/types";
 
-const collectReadableStream = async (stdin: NodeJS.ReadableStream) => {
+const collectInitialStdin = async (stdin: NodeJS.ReadableStream) => {
+  /* c8 ignore next 3 */
+  if (process.stdin.isTTY) {
+    return;
+  }
   let input = "";
   // eslint-disable-next-line no-restricted-syntax
   for await (const line of createInterface({ input: stdin })) {
@@ -47,7 +51,7 @@ export const createProgram = (stdin: NodeJS.ReadableStream = process.stdin) => {
     .command("decrypt")
     .description("Decrypt a message with k out of n shares")
     .action(async () =>
-      handleFace(decryptFace)(await collectReadableStream(stdin)),
+      handleFace(decryptFace)(await collectInitialStdin(stdin)),
     );
 
   program
@@ -59,7 +63,7 @@ export const createProgram = (stdin: NodeJS.ReadableStream = process.stdin) => {
       "pub.key",
     )
     .action(async (options) =>
-      handleFace(encryptFace)(await collectReadableStream(stdin), options),
+      handleFace(encryptFace)(await collectInitialStdin(stdin), options),
     );
 
   return program;

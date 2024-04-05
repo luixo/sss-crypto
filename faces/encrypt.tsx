@@ -37,7 +37,7 @@ const getEncryptedText = (input: string, publicKey: KeyObject) =>
   encryptText(Buffer.from(input), publicKey);
 
 type Props = {
-  input: string;
+  input?: string;
   publicKey: KeyObject;
 };
 
@@ -96,7 +96,10 @@ const Encrypt: React.FC<Props> = ({ input: initialInput, publicKey }) => {
   }
 };
 
-export const face: Face<Props, [string, Partial<Record<string, string>>]> = {
+export const face: Face<
+  Props,
+  [string | undefined, Partial<Record<string, string>>]
+> = {
   Component: Encrypt,
   validator: async (input, options) => {
     const publicKey = await readFileSafe(

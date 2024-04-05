@@ -114,7 +114,7 @@ describe("decrypt", () => {
   const faceMock = mockedFace(decryptFace);
   beforeEach(() => {
     faceMock.validator.mockImplementation((encryptedText) => ({
-      encryptedText,
+      encryptedText: encryptedText || "",
     }));
   });
 

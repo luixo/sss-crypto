@@ -210,10 +210,10 @@ const Decrypt: React.FC<Props> = ({ encryptedText }) => {
   }
 };
 
-export const face: Face<Props, [string]> = {
+export const face: Face<Props, [string | undefined]> = {
   Component: Decrypt,
   validator: (encryptedText) => {
-    if (encryptedText.length === 0) {
+    if (!encryptedText || encryptedText.length === 0) {
       throw new Error("Input should not be empty to decrypt.");
     }
     return { encryptedText };
