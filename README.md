@@ -1,5 +1,7 @@
 # Shamir's secret sharing crypto
 
+![badge](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/luixo/4670c3917f47c8610e4defce63f07b55/raw/coverage_master.json)
+
 ## About
 
 This is a helper utility to generate a private key split in `n` shares that can be later reassembled via `k` of them to decrypt a document. Is uses an implementation of [Shamir's threshold secret sharing scheme](http://en.wikipedia.org/wiki/Shamir's_Secret_Sharing) in JavaScript (with the help of [secrets.js](https://github.com/grempe/secrets.js) library).
