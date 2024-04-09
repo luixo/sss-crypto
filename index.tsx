@@ -1,27 +1,13 @@
 import React from "react";
 import { Command } from "commander";
 import { render } from "ink";
-import { createInterface } from "node:readline";
 
 import { face as generateSharesFace } from "./faces/generate-shares";
 import { face as encryptFace } from "./faces/encrypt";
 import { face as decryptFace } from "./faces/decrypt";
 import { Face } from "./faces/types";
 
-const collectInitialStdin = async (stdin: NodeJS.ReadableStream) => {
-  /* c8 ignore next 3 */
-  if (process.stdin.isTTY) {
-    return;
-  }
-  let input = "";
-  // eslint-disable-next-line no-restricted-syntax
-  for await (const line of createInterface({ input: stdin })) {
-    input += line;
-  }
-  return input;
-};
-
-export const createProgram = (stdin: NodeJS.ReadableStream = process.stdin) => {
+export const createProgram = () => {
   const program = new Command();
 
   const handleFace =
@@ -50,9 +36,8 @@ export const createProgram = (stdin: NodeJS.ReadableStream = process.stdin) => {
   program
     .command("decrypt")
     .description("Decrypt a message with k out of n shares")
-    .action(async () =>
-      handleFace(decryptFace)(await collectInitialStdin(stdin)),
-    );
+    .option("-i, --input <text>", "path to a file to decrypt")
+    .action((options) => handleFace(decryptFace)(options));
 
   program
     .command("encrypt")
@@ -62,9 +47,8 @@ export const createProgram = (stdin: NodeJS.ReadableStream = process.stdin) => {
       "path to a pub key to encrypt text with",
       "pub.key",
     )
-    .action(async (options) =>
-      handleFace(encryptFace)(await collectInitialStdin(stdin), options),
-    );
+    .option("-i, --input <text>", "path to a file to encrypt")
+    .action(async (options) => handleFace(encryptFace)(options));
 
   return program;
 };

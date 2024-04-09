@@ -1,7 +1,8 @@
 import React from "react";
 
-import { expect, test, describe } from "vitest";
+import { expect, test, describe, afterEach } from "vitest";
 import chalk from "chalk";
+import mockfs from "mock-fs";
 
 import { face } from "./decrypt";
 import { encryptText, generatePair } from "../utils/crypto";
@@ -11,18 +12,41 @@ import { render } from "../utils/render";
 import { sequence } from "../utils/promise";
 import { pickRandom } from "../utils/array";
 
+afterEach(() => {
+  mockfs.restore();
+});
+
 describe("validation", () => {
   test("input is empty", async () => {
-    expect(() => face.validator("")).toThrow(
+    expect(() => face.validator({})).rejects.toThrow(
       "Input should not be empty to decrypt.",
     );
   });
 
+  describe("input file", () => {
+    test("file does not exist", async () => {
+      mockfs({});
+      expect(() => face.validator({ input: "non-existent" })).rejects.toThrow(
+        'Input at "non-existent" does not exist.',
+      );
+    });
+
+    test("target is a directory", async () => {
+      const dirPath = "path/to/dir";
+      mockfs({ [dirPath]: {} });
+      expect(() => face.validator({ input: dirPath })).rejects.toThrow(
+        'Input at "path/to/dir" is not a file.',
+      );
+    });
+  });
+
   test("successful validation", async () => {
-    const encryptedText = "Hello world\nNext line please";
-    const props = await face.validator(encryptedText);
+    const inputPath = "path/to/input.txt";
+    const inputToDecrypt = "input to encrypt";
+    mockfs({ [inputPath]: inputToDecrypt });
+    const props = await face.validator({ input: inputPath });
     expect(props).toEqual<Awaited<ReturnType<(typeof face)["validator"]>>>({
-      encryptedText,
+      encryptedText: inputToDecrypt,
     });
   });
 });
@@ -63,10 +87,7 @@ describe("decryption", () => {
         'Press "Enter" to restart',
       );
       await stdin.enter();
-      expectOutput(
-        "Please input share #1",
-        chalk.red("(your input is hidden)"),
-      );
+      expectOutput("Please input share #1", chalk.red("(no input)"));
     });
 
     test("corrupted input data", async () => {
@@ -118,13 +139,42 @@ describe("decryption", () => {
       await stdin.writeLn(privateKeyShares[0]);
       expectOutput(
         "Please input share #1",
+        chalk.green(`(input of length ${privateKeyShares[0].length})`),
         chalk.red("Error: Expected to have base64 for a share body"),
       );
       await stdin.backspace();
       expectOutput(
         "Please input share #1",
-        chalk.red("(your input is hidden)"),
+        chalk.green(`(input of length ${privateKeyShares[0].length - 1})`),
       );
+    });
+
+    describe("incorrent share format", () => {
+      test("some delimiters", async () => {
+        const { expectOutput, stdin } = await render(
+          <face.Component encryptedText="anything" />,
+        );
+        const corruptedShare = "3|05|anything";
+        await stdin.writeLn(corruptedShare);
+        expectOutput(
+          "Please input share #1",
+          chalk.green(`(input of length ${corruptedShare.length})`),
+          chalk.red("Error: Share format is incorrect"),
+        );
+      });
+
+      test("no delimiters", async () => {
+        const { expectOutput, stdin } = await render(
+          <face.Component encryptedText="anything" />,
+        );
+        const corruptedShare = "foo";
+        await stdin.writeLn(corruptedShare);
+        expectOutput(
+          "Please input share #1",
+          chalk.green(`(input of length ${corruptedShare.length})`),
+          chalk.red("Error: Share format is incorrect"),
+        );
+      });
     });
 
     test("mixed thresholds in shares", async () => {
@@ -160,7 +210,7 @@ describe("decryption", () => {
     const expectLastLine = (lastLine: string) => {
       expectOutput("Please input share #1", lastLine);
     };
-    expectLastLine(chalk.red("(your input is hidden)"));
+    expectLastLine(chalk.red("(no input)"));
     await stdin.write("1");
     expectLastLine(chalk.green("(input of length 1)"));
     await stdin.write("11");
@@ -169,9 +219,9 @@ describe("decryption", () => {
     expectLastLine(chalk.green("(input of length 2)"));
     await stdin.backspace();
     await stdin.backspace();
-    expectLastLine(chalk.red("(your input is hidden)"));
+    expectLastLine(chalk.red("(no input)"));
     await stdin.backspace();
-    expectLastLine(chalk.red("(your input is hidden)"));
+    expectLastLine(chalk.red("(no input)"));
   });
 
   test("threshold calculated from data properly", async () => {
@@ -190,7 +240,7 @@ describe("decryption", () => {
     expectOutput(
       "Input share #1 registered.",
       `Please input share #2 (out of ${threshold})`,
-      chalk.red("(your input is hidden)"),
+      chalk.red("(no input)"),
     );
   });
 
@@ -216,7 +266,7 @@ describe("decryption", () => {
               (__, shareIndex) => `Input share #${shareIndex + 1} registered.`,
             ),
           `Please input share #${index + 2} (out of ${threshold})`,
-          chalk.red("(your input is hidden)"),
+          chalk.red("(no input)"),
         );
       }),
     );

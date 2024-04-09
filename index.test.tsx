@@ -1,7 +1,6 @@
 import { expect, test, describe, vi, beforeEach, Mock } from "vitest";
 import chalk from "chalk";
 import React from "react";
-import { Readable } from "stream";
 import { useApp } from "ink";
 
 import { createProgram } from "./index";
@@ -32,8 +31,8 @@ vi.mock("./faces/encrypt", () => ({ face }));
 vi.mock("./faces/decrypt", () => ({ face }));
 vi.mock("./faces/generate-shares", () => ({ face }));
 
-const testProgram = async (input: string, stdin: string = "") => {
-  const program = createProgram(Readable.from(stdin));
+const testProgram = async (input: string) => {
+  const program = createProgram();
   const stdout: string[] = [];
   const stderr: string[] = [];
   program
@@ -84,27 +83,31 @@ describe("encrypt", () => {
   );
   const faceMock = mockedFace(encryptFace);
   beforeEach(() => {
-    faceMock.validator.mockImplementation((input) => ({ publicKey, input }));
+    faceMock.validator.mockImplementation((opts) => ({
+      publicKey,
+      input: opts.input ? `${opts.input}|content` : undefined,
+    }));
   });
 
-  test("stdin", async () => {
-    const input = "Hello world";
-    const { stderr } = await testProgram("encrypt", input);
-    expectFace(faceMock, [input, { pub: "pub.key" }], { publicKey, input });
-    expect(stderr).toHaveLength(0);
-  });
-
-  test("default public key", async () => {
+  test("default public key, default input", async () => {
     const { stderr } = await testProgram("encrypt");
-    expectFace(faceMock, ["", { pub: "pub.key" }], { publicKey, input: "" });
+    expectFace(faceMock, [{ pub: "pub.key" }], { publicKey });
     expect(stderr).toHaveLength(0);
   });
 
   test("explicit public key", async () => {
     const { stderr } = await testProgram("encrypt -p specific.key");
-    expectFace(faceMock, ["", { pub: "specific.key" }], {
+    expectFace(faceMock, [{ pub: "specific.key" }], {
       publicKey,
-      input: "",
+    });
+    expect(stderr).toHaveLength(0);
+  });
+
+  test("explicit input", async () => {
+    const { stderr } = await testProgram("encrypt -p specific.key -i file.txt");
+    expectFace(faceMock, [{ pub: "specific.key", input: "file.txt" }], {
+      publicKey,
+      input: "file.txt|content",
     });
     expect(stderr).toHaveLength(0);
   });
@@ -113,21 +116,23 @@ describe("encrypt", () => {
 describe("decrypt", () => {
   const faceMock = mockedFace(decryptFace);
   beforeEach(() => {
-    faceMock.validator.mockImplementation((encryptedText) => ({
-      encryptedText: encryptedText || "",
+    faceMock.validator.mockImplementation((opts) => ({
+      encryptedText: opts.input ? `${opts.input}|content` : "",
     }));
   });
 
   test("no text passed", async () => {
     const { stderr } = await testProgram("decrypt");
-    expectFace(faceMock, [""], { encryptedText: "" });
+    expectFace(faceMock, [{}], { encryptedText: "" });
     expect(stderr).toHaveLength(0);
   });
 
   test("text passed", async () => {
-    const inputText = "passed text";
-    const { stderr } = await testProgram("decrypt", inputText);
-    expectFace(faceMock, [inputText], { encryptedText: inputText });
+    const inputFile = "file.txt";
+    const { stderr } = await testProgram(`decrypt -i ${inputFile}`);
+    expectFace(faceMock, [{ input: inputFile }], {
+      encryptedText: `${inputFile}|content`,
+    });
     expect(stderr).toHaveLength(0);
   });
 });
@@ -181,7 +186,7 @@ describe("errors", () => {
     });
     const { stderr } = await testProgram("encrypt");
     expect(faceMock.validator).toHaveBeenCalledTimes(1);
-    expect(faceMock.validator).toHaveBeenCalledWith("", { pub: "pub.key" });
+    expect(faceMock.validator).toHaveBeenCalledWith({ pub: "pub.key" });
     expect(faceMock.Component).toHaveBeenCalledTimes(0);
     expectStderr(stderr, `Error: Unexpected validation error`);
   });

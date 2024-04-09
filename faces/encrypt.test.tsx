@@ -9,42 +9,73 @@ import { render } from "../utils/render";
 import { decryptText, generatePair } from "../utils/crypto";
 import { keyToPem } from "../utils/encoding";
 
+const withBox = (text: string, width: number = 100) => [
+  `+${"".padEnd(width - 2, "-")}+`,
+  `|${text.padEnd(width + 10 - 2, " ")}|`,
+  `+${"".padEnd(width - 2, "-")}+`,
+];
+
 afterEach(() => {
   mockfs.restore();
 });
 
 describe("validation", () => {
-  test("file does not exist", async () => {
-    expect(() => face.validator("", { pub: "non-existent" })).rejects.toThrow(
-      'Public key at "non-existent" does not exist.',
-    );
+  describe("pub key file", () => {
+    test("file does not exist", async () => {
+      expect(() => face.validator({ pub: "non-existent" })).rejects.toThrow(
+        'Public key at "non-existent" does not exist.',
+      );
+    });
+
+    test("target is a directory", async () => {
+      const dirPath = "path/to/dir";
+      mockfs({ [dirPath]: {} });
+      expect(() => face.validator({ pub: dirPath })).rejects.toThrow(
+        'Public key at "path/to/dir" is not a file.',
+      );
+    });
+
+    test("public key data is invalid", async () => {
+      const publicKeyData = "This is not a public key";
+      const pubKeyPath = "path/to/pub.key";
+      mockfs({ [pubKeyPath]: publicKeyData });
+      expect(() => face.validator({ pub: pubKeyPath })).rejects.toThrow(
+        "Can't read public key, probably data is corrupted.",
+      );
+    });
   });
 
-  test("target is a directory", async () => {
-    const dirPath = "path/to/dir";
-    mockfs({ [dirPath]: {} });
-    expect(() => face.validator("", { pub: dirPath })).rejects.toThrow(
-      'Public key at "path/to/dir" is not a file.',
-    );
-  });
+  describe("input file", () => {
+    test("file does not exist", async () => {
+      const pubKeyPath = "path/to/pub.key";
+      mockfs({ [pubKeyPath]: "" });
+      expect(() =>
+        face.validator({ pub: pubKeyPath, input: "non-existent" }),
+      ).rejects.toThrow('Input at "non-existent" does not exist.');
+    });
 
-  test("public key data is invalid", async () => {
-    const publicKeyData = "This is not a public key";
-    const filePath = "path/to/pub.key";
-    mockfs({ [filePath]: publicKeyData });
-    expect(() => face.validator("", { pub: filePath })).rejects.toThrow(
-      "Can't read public key, probably data is corrupted.",
-    );
+    test("target is a directory", async () => {
+      const pubKeyPath = "path/to/pub.key";
+      const dirPath = "path/to/dir";
+      mockfs({ [pubKeyPath]: "", [dirPath]: {} });
+      expect(() =>
+        face.validator({ pub: pubKeyPath, input: dirPath }),
+      ).rejects.toThrow('Input at "path/to/dir" is not a file.');
+    });
   });
 
   test("successful validation", async () => {
     const { publicKey } = generatePair();
-    const filePath = "path/to/pub.key";
-    mockfs({ [filePath]: keyToPem(publicKey) });
-    const { publicKey: parsedPublicKey } = await face.validator("", {
-      pub: filePath,
+    const pubKeyPath = "path/to/pub.key";
+    const inputPath = "path/to/input.txt";
+    const inputToEncrypt = "input to encrypt";
+    mockfs({ [pubKeyPath]: keyToPem(publicKey), [inputPath]: inputToEncrypt });
+    const { publicKey: parsedPublicKey, input } = await face.validator({
+      pub: pubKeyPath,
+      input: inputPath,
     });
     expect(keyToPem(publicKey)).toEqual(keyToPem(parsedPublicKey));
+    expect(input).toEqual(inputToEncrypt);
   });
 });
 
@@ -52,9 +83,9 @@ describe("encryption", () => {
   test("input properly displayed", async () => {
     const { publicKey } = generatePair();
     const { expectOutput, stdin } = await render(
-      <face.Component publicKey={publicKey} input="" />,
+      <face.Component publicKey={publicKey} />,
     );
-    expectOutput("Please input text to encrypt:");
+    expectOutput("Please input text to encrypt:", chalk.red("(no input)"));
     await stdin.write("1");
     expectOutput("Please input text to encrypt:", chalk.green("1"));
     await stdin.write("11");
@@ -64,7 +95,7 @@ describe("encryption", () => {
   });
 
   describe("text is encrypted", () => {
-    test("provided via stdin", async () => {
+    test("provided externally", async () => {
       const textToEncrypt = "Hello world";
       const { publicKey, privateKey } = generatePair();
       const { expectOutput, lastFrame } = await render(
@@ -87,11 +118,11 @@ describe("encryption", () => {
       const textToEncrypt = "Hello world";
       const { publicKey, privateKey } = generatePair();
       const { expectOutput, lastFrame, stdin } = await render(
-        <face.Component publicKey={publicKey} input="" />,
+        <face.Component publicKey={publicKey} />,
       );
-      expectOutput("Please input text to encrypt:");
+      expectOutput("Please input text to encrypt:", chalk.red("(no input)"));
       await stdin.enter();
-      expectOutput("Please input text to encrypt:");
+      expectOutput("Please input text to encrypt:", chalk.red("(no input)"));
       await stdin.writeLn(textToEncrypt);
       const [, ...encryptedText] = lastFrame()!.split("\n");
       expect(encryptedText.join("")).toHaveLength(344);
@@ -104,6 +135,137 @@ describe("encryption", () => {
           privateKey,
         ).toString(),
       ).toEqual(textToEncrypt);
+    });
+  });
+
+  describe("working with templates", () => {
+    test("templates are substituted", async () => {
+      const textToEncrypt =
+        "Hello <% enter your name %>, this is <% enter other name %> and welcome!";
+      const { publicKey, privateKey } = generatePair();
+      const { expectEncrypted, expectOutput, stdin } = await render(
+        <face.Component publicKey={publicKey} input={textToEncrypt} />,
+      );
+      expectOutput(null, null, null, null, chalk.red("(no input)"));
+      await stdin.write("A");
+      expectOutput(null, null, null, null, chalk.green("A"));
+      await stdin.writeLn("lice");
+      await stdin.writeLn("Bob");
+      expectEncrypted({
+        privateKey,
+        getEncrypted: (actual) => actual.slice(1).join(""),
+        expected: textToEncrypt
+          .replace("<% enter your name %>", "Alice")
+          .replace("<% enter other name %>", "Bob"),
+      });
+    });
+
+    test("substitute input interaction", async () => {
+      const textToEncrypt =
+        "Hello <% enter your name %>, this is <% enter other name %> and <% what should we say? %>!";
+      const { publicKey } = generatePair();
+      const { expectOutput, stdin } = await render(
+        <face.Component publicKey={publicKey} input={textToEncrypt} />,
+      );
+      expectOutput(
+        ...withBox(
+          `Hello ${chalk.green("<% enter your name %>")}, this is ...`,
+        ),
+        "Please input a substitute:",
+        chalk.red("(no input)"),
+      );
+      await stdin.writeLn("Alice");
+      expectOutput(
+        "✔️  [enter your name -> 5 symbol(s)]",
+        ...withBox(
+          `..., this is ${chalk.green("<% enter other name %>")} and <% wh...`,
+        ),
+        "Please input a substitute:",
+        chalk.red("(no input)"),
+      );
+      await stdin.writeLn("Bob");
+      expectOutput(
+        "✔️  [enter your name -> 5 symbol(s)]",
+        "✔️  [enter other name -> 3 symbol(s)]",
+        ...withBox(`...me %> and ${chalk.green("<% what should we say? %>")}`),
+        "Please input a substitute:",
+        chalk.red("(no input)"),
+      );
+    });
+
+    test("border case without dots", async () => {
+      const textToEncrypt = "<% start %> and <% end %>";
+      const { publicKey } = generatePair();
+      const { expectOutput, stdin } = await render(
+        <face.Component publicKey={publicKey} input={textToEncrypt} />,
+      );
+      expectOutput(
+        ...withBox(`${chalk.green("<% start %>")} and <% en...`),
+        "Please input a substitute:",
+        chalk.red("(no input)"),
+      );
+      await stdin.writeLn("Alice");
+      expectOutput(
+        "✔️  [start -> 5 symbol(s)]",
+        ...withBox(`...rt %> and ${chalk.green("<% end %>")}`),
+        "Please input a substitute:",
+        chalk.red("(no input)"),
+      );
+    });
+
+    test("arrows work to navigate substitutes", async () => {
+      const textToEncrypt =
+        "Hello <% enter your name %>, this is <% enter other name %> and <% what should we say? %>!";
+      const { publicKey } = generatePair();
+      const { expectOutput, stdin, lastFrame } = await render(
+        <face.Component publicKey={publicKey} input={textToEncrypt} />,
+      );
+      await stdin.writeLn("Alice");
+      await stdin.writeLn("Bob");
+      await stdin.write("Charlie");
+
+      // Can move around frames
+      await stdin.leftArrow();
+      expectOutput(
+        "✔️  [enter your name -> 5 symbol(s)]",
+        chalk.green("✔️  [enter other name -> 3 symbol(s)]"),
+        "✔️  [what should we say? -> 7 symbol(s)]",
+        ...withBox(
+          `..., this is ${chalk.green("<% enter other name %>")} and <% wh...`,
+        ),
+        "Please input a substitute:",
+        chalk.green("Bob"),
+      );
+      await stdin.rightArrow();
+      expectOutput(
+        "✔️  [enter your name -> 5 symbol(s)]",
+        "✔️  [enter other name -> 3 symbol(s)]",
+        chalk.green("✔️  [what should we say? -> 7 symbol(s)]"),
+        ...withBox(`...me %> and ${chalk.green("<% what should we say? %>")}`),
+        "Please input a substitute:",
+        chalk.green("Charlie"),
+      );
+
+      // Can't go before 1st frame
+      await stdin.leftArrow();
+      await stdin.leftArrow();
+      const firstFrame = lastFrame();
+      await stdin.leftArrow();
+      expect(firstFrame).toEqual(lastFrame());
+
+      await stdin.rightArrow();
+
+      // Can't go after last frame (said not all frame are fulfilled)
+      await stdin.rightArrow();
+      await stdin.backspace(7);
+      await stdin.rightArrow();
+      const thirdFrame = lastFrame();
+      await stdin.rightArrow();
+      expect(thirdFrame).toEqual(lastFrame());
+
+      await stdin.write("Charlie");
+      await stdin.rightArrow();
+      expectOutput("Encryption result:", null);
     });
   });
 });

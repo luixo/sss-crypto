@@ -13,7 +13,7 @@ The general use case looks like this:
 1. Alice generates a public / private key pair with a private key splitted in `n` shares and public key saved non-securely (e.g. `yarn start generate-shares -k 3 -n 5`)
 1. Alice sends `n` shares to Bobs to let them decrypt her message later.
 1. Alice encrypts data with an encryption tool and public key saved in share generation step (e.g. `yarn start encrypt -i data-to-encrypt.txt`) and send encrypted data to Bobs.
-1. Bobs collect at least `k` shares to decrypt the data (e.g. `yarn start decrypt < encrypted-data.txt`, follow instructions in CLI).
+1. Bobs collect at least `k` shares to decrypt the data (e.g. `yarn start decrypt -i encrypted-data.txt`, follow instructions in CLI).
 
 ## Security concerns
 

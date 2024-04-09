@@ -1,12 +1,19 @@
 import * as React from "react";
 import { Text, Box, useInput, Newline } from "ink";
+import chalk from "chalk";
 import { sanitizeBase64 } from "../utils/encoding";
 import { ShareObject, combineShares, deserializeShare } from "../utils/shares";
 import { decryptText, parsePrivateKey } from "../utils/crypto";
 import { Face } from "./types";
+import { Input, type Props as InputProps } from "../utils/input";
+import { readFileSafe } from "../utils/fs";
+import { useKeepAlive } from "../utils/use-keep-alive";
 
 const safeParseShare = (input: string) => {
   try {
+    if ((input.match(/\|/g) || []).length !== 3) {
+      throw new Error("Share format is incorrect");
+    }
     const result = deserializeShare(input);
     return { success: true as const, result };
   } catch (e) {
@@ -14,40 +21,39 @@ const safeParseShare = (input: string) => {
   }
 };
 
-const HiddenInput: React.FC<{
-  onDone: (input: ShareObject) => void;
-}> = ({ onDone }) => {
-  const [input, setInput] = React.useState("");
+export const HiddenInput: React.FC<
+  Omit<InputProps, "onEnter"> & {
+    onEnter: (input: ShareObject) => void;
+  }
+> = ({ onEnter, ...props }) => {
   const [error, setError] = React.useState<string>();
-  React.useEffect(() => {
-    const sanitizedInput = sanitizeBase64(input);
-    if (sanitizedInput.length !== input.length) {
-      setInput(sanitizedInput);
-    }
-  }, [input]);
-  useInput((value, key) => {
-    setError(undefined);
-    if (key.return) {
+  const onEnterRaw = React.useCallback(
+    (input: string) => {
       const parsedShare = safeParseShare(input);
       if (!parsedShare.success) {
         setError(parsedShare.error);
       } else {
-        onDone(parsedShare.result);
+        onEnter(parsedShare.result);
       }
-      setInput("");
-    } else if (key.backspace) {
-      setInput((prevInput) => prevInput.slice(0, -1));
-    } else {
-      setInput((prevInput) => prevInput + value);
-    }
-  });
+    },
+    [onEnter],
+  );
+  const onKeystrokeRaw = React.useCallback(() => {
+    setError(undefined);
+  }, []);
+  const hideValue = React.useCallback(
+    (value: string) =>
+      `(input of length ${value.length})${error ? `\n${chalk.red(error)}` : ""}`,
+    [error],
+  );
   return (
-    <Text color={error || input.length === 0 ? "red" : "green"}>
-      {error ||
-        (input.length === 0
-          ? "(your input is hidden)"
-          : `(input of length ${input.length})`)}
-    </Text>
+    <Input
+      onEnter={onEnterRaw}
+      {...props}
+      onKeystroke={onKeystrokeRaw}
+      parseInput={sanitizeBase64}
+      formatValue={hideValue}
+    />
   );
 };
 
@@ -163,6 +169,7 @@ const Decrypt: React.FC<Props> = ({ encryptedText }) => {
     },
     { isActive: stage.type === "error" },
   );
+  useKeepAlive(stage.type === "input");
   switch (stage.type) {
     case "input": {
       return (
@@ -178,7 +185,7 @@ const Decrypt: React.FC<Props> = ({ encryptedText }) => {
               {stage.threshold === -1 ? "" : ` (out of ${stage.threshold})`}
             </Text>
             <Newline />
-            <HiddenInput onDone={onShareInput} />
+            <HiddenInput key={stage.index} onEnter={onShareInput} />
           </Text>
         </Box>
       );
@@ -210,12 +217,17 @@ const Decrypt: React.FC<Props> = ({ encryptedText }) => {
   }
 };
 
-export const face: Face<Props, [string | undefined]> = {
+export const face: Face<Props, [Partial<Record<string, string>>]> = {
   Component: Decrypt,
-  validator: (encryptedText) => {
-    if (!encryptedText || encryptedText.length === 0) {
+  validator: async (options) => {
+    const input = options.input
+      ? (
+          await readFileSafe(options.input, () => `Input at "${options.input}"`)
+        ).toString()
+      : "";
+    if (!input || input.length === 0) {
       throw new Error("Input should not be empty to decrypt.");
     }
-    return { encryptedText };
+    return { encryptedText: input };
   },
 };
