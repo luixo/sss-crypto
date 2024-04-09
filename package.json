@@ -20,7 +20,7 @@
     "ink": "4.4.0",
     "prettier": "^3.2.5",
     "react": "~18.2.0",
-    "secrets.js": "git@github.com:grempe/secrets.js.git",
+    "secrets.js": "git+https://git@github.com/grempe/secrets.js.git",
     "tsx": "~4.7.1",
     "valibot": "^0.29.0"
   },

@@ -4040,9 +4040,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"secrets.js@git@github.com:grempe/secrets.js.git":
+"secrets.js@git+https://git@github.com/grempe/secrets.js.git":
   version: 2.0.0
-  resolution: "secrets.js@git@github.com:grempe/secrets.js.git#commit=14a4b682a28242b1dbe5506674b5d5f476b78dbf"
+  resolution: "secrets.js@https://git@github.com/grempe/secrets.js.git#commit=14a4b682a28242b1dbe5506674b5d5f476b78dbf"
   checksum: 10c0/3a5227c203bd9b68df348b3e3787569916215db6719b04a414b6913cbd15d02646dfa97acb08c731f0eda912c0e83f71a5d5278c26dcaa40ed05fa20764108d5
   languageName: node
   linkType: hard
@@ -4290,7 +4290,7 @@ __metadata:
     pre-commit: "npm:^1.2.2"
     prettier: "npm:^3.2.5"
     react: "npm:~18.2.0"
-    secrets.js: "git@github.com:grempe/secrets.js.git"
+    secrets.js: "git+https://git@github.com/grempe/secrets.js.git"
     tsx: "npm:~4.7.1"
     typescript: "npm:^5.3.3"
     valibot: "npm:^0.29.0"

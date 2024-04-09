@@ -65,7 +65,7 @@ jobs:
       - name: Coverage badge
         uses: schneegans/dynamic-badges-action@v1.6.0
         env:
-          branch: ${{ github.ref == 'refs/heads/master' && 'master' || github.event.pull_request.number }}
+          branch: ${{ github.ref == 'refs/heads/main' && 'main' || github.event.pull_request.number }}
         with:
           auth: ${{ secrets.GIST_SECRET }}
           gistID: 4670c3917f47c8610e4defce63f07b55
