@@ -188,13 +188,13 @@ describe("shares generation", () => {
       shareBlock.split("\n").slice(1).join(""),
     );
 
-    const textToEncrypt = Buffer.from("Hello world\nNext line please");
-    const encryptedText = encryptText(
+    const textToEncrypt = "Hello world\nNext line please";
+    const encryptedData = encryptText(
       textToEncrypt,
       parsePublicKey(Buffer.from(publicKeyBlock)),
     );
     const decryptedText = decryptText(
-      encryptedText,
+      encryptedData,
       parsePrivateKey(
         Buffer.from(
           combineShares(serializedShares.map(deserializeShare)),
@@ -202,6 +202,6 @@ describe("shares generation", () => {
         ),
       ),
     );
-    expect(textToEncrypt.toString()).toEqual(decryptedText.toString());
+    expect(textToEncrypt).toEqual(decryptedText);
   });
 });

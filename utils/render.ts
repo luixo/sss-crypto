@@ -2,7 +2,7 @@ import { render as originalRender } from "ink-testing-library";
 import { expect } from "vitest";
 import { KeyObject } from "crypto";
 import { nextTick as rawNextTick } from "node:process";
-import { decryptText } from "./crypto";
+import { decryptText, deserializeEncryptedData } from "./crypto";
 
 const nextTick = () =>
   new Promise((resolve) => {
@@ -89,9 +89,8 @@ export const render = async (
       expected,
     }) => {
       const actual = getEncrypted(rest.lastFrame()!.split("\n"));
-      expect(
-        decryptText(Buffer.from(actual, "base64"), privateKey).toString(),
-      ).toEqual(expected);
+      const encryptedData = deserializeEncryptedData(actual);
+      expect(decryptText(encryptedData, privateKey)).toEqual(expected);
     },
   };
 };

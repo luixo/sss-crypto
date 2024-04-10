@@ -5,7 +5,12 @@ import chalk from "chalk";
 import mockfs from "mock-fs";
 
 import { face } from "./decrypt";
-import { encryptText, generatePair } from "../utils/crypto";
+import {
+  EncryptedData,
+  encryptText,
+  generatePair,
+  serializeEncryptedData,
+} from "../utils/crypto";
 import { createShares, serializeShare } from "../utils/shares";
 import { keyToHex } from "../utils/encoding";
 import { render } from "../utils/render";
@@ -38,15 +43,165 @@ describe("validation", () => {
         'Input at "path/to/dir" is not a file.',
       );
     });
+
+    describe("deserializing encrypted data", () => {
+      test("no branding tag", async () => {
+        const inputPath = "path/to/input.txt";
+        mockfs({ [inputPath]: "x" });
+        expect(() => face.validator({ input: inputPath })).rejects.toThrow(
+          `Data is invalid, expected data with "sss-enc" prefix.`,
+        );
+      });
+
+      test("invalid branding tag", async () => {
+        const inputPath = "path/to/input.txt";
+        const encryptedData = encryptText(
+          "input to encrypt",
+          generatePair().publicKey,
+        );
+        const serializedData = serializeEncryptedData(encryptedData);
+        mockfs({ [inputPath]: serializedData.slice(1) });
+        expect(() => face.validator({ input: inputPath })).rejects.toThrow(
+          `Data is invalid, expected data with "sss-enc" prefix.`,
+        );
+      });
+
+      test("no initial vector", async () => {
+        const inputPath = "path/to/input.txt";
+        const encryptedData = encryptText(
+          "input to encrypt",
+          generatePair().publicKey,
+        );
+        const serializedData = serializeEncryptedData(encryptedData);
+        mockfs({
+          [inputPath]: serializedData.split("|").slice(0, 1).join("|"),
+        });
+        expect(() => face.validator({ input: inputPath })).rejects.toThrow(
+          "No initial vector on decryption.",
+        );
+      });
+
+      test("invalid initial vector length", async () => {
+        const inputPath = "path/to/input.txt";
+        const encryptedData = encryptText(
+          "input to encrypt",
+          generatePair().publicKey,
+        );
+        mockfs({
+          [inputPath]: serializeEncryptedData({
+            ...encryptedData,
+            initVector: `${encryptedData.initVector.slice(0, -10)}malformed`,
+          }),
+        });
+        expect(() => face.validator({ input: inputPath })).rejects.toThrow(
+          "Initial vector has to have length of 24 bytes.",
+        );
+      });
+
+      test("no auth tag", async () => {
+        const inputPath = "path/to/input.txt";
+        const encryptedData = encryptText(
+          "input to encrypt",
+          generatePair().publicKey,
+        );
+        const serializedData = serializeEncryptedData(encryptedData);
+        mockfs({
+          [inputPath]: serializedData.split("|").slice(0, 2).join("|"),
+        });
+        expect(() => face.validator({ input: inputPath })).rejects.toThrow(
+          "No auth tag on decryption.",
+        );
+      });
+
+      test("invalid auth tag length", async () => {
+        const inputPath = "path/to/input.txt";
+        const encryptedData = encryptText(
+          "input to encrypt",
+          generatePair().publicKey,
+        );
+        mockfs({
+          [inputPath]: serializeEncryptedData({
+            ...encryptedData,
+            authTag: `${encryptedData.authTag.slice(0, -10)}malformed`,
+          }),
+        });
+        expect(() => face.validator({ input: inputPath })).rejects.toThrow(
+          "Auth tag has to have length of 24 bytes.",
+        );
+      });
+
+      test("no symmetric key", async () => {
+        const inputPath = "path/to/input.txt";
+        const encryptedData = encryptText(
+          "input to encrypt",
+          generatePair().publicKey,
+        );
+        const serializedData = serializeEncryptedData(encryptedData);
+        mockfs({
+          [inputPath]: serializedData.split("|").slice(0, 3).join("|"),
+        });
+        expect(() => face.validator({ input: inputPath })).rejects.toThrow(
+          "No RSA encrypted key on decryption.",
+        );
+      });
+
+      test("invalid symmetric key", async () => {
+        const inputPath = "path/to/input.txt";
+        const encryptedData = encryptText(
+          "input to encrypt",
+          generatePair().publicKey,
+        );
+        mockfs({
+          [inputPath]: serializeEncryptedData({
+            ...encryptedData,
+            encryptedAesKey: `${encryptedData.encryptedAesKey.slice(0, -10)}malformed`,
+          }),
+        });
+        expect(() => face.validator({ input: inputPath })).rejects.toThrow(
+          "Encrypted AES key has to have length of 344 bytes.",
+        );
+      });
+
+      test("no encrypted text", async () => {
+        const inputPath = "path/to/input.txt";
+        const encryptedData = encryptText(
+          "input to encrypt",
+          generatePair().publicKey,
+        );
+        const serializedData = serializeEncryptedData(encryptedData);
+        mockfs({
+          [inputPath]: serializedData.split("|").slice(0, 4).join("|"),
+        });
+        expect(() => face.validator({ input: inputPath })).rejects.toThrow(
+          "No text to decrypt on decryption.",
+        );
+      });
+
+      test("extra data after delimiter", async () => {
+        const inputPath = "path/to/input.txt";
+        const encryptedData = encryptText(
+          "input to encrypt",
+          generatePair().publicKey,
+        );
+        const serializedData = serializeEncryptedData(encryptedData);
+        mockfs({
+          [inputPath]: [...serializedData.split("|"), "extra"].join("|"),
+        });
+        expect(() => face.validator({ input: inputPath })).rejects.toThrow(
+          "Extra data on decryption.",
+        );
+      });
+    });
   });
 
   test("successful validation", async () => {
     const inputPath = "path/to/input.txt";
     const inputToDecrypt = "input to encrypt";
-    mockfs({ [inputPath]: inputToDecrypt });
+    const encryptedData = encryptText(inputToDecrypt, generatePair().publicKey);
+    mockfs({ [inputPath]: serializeEncryptedData(encryptedData) });
     const props = await face.validator({ input: inputPath });
     expect(props).toEqual<Awaited<ReturnType<(typeof face)["validator"]>>>({
-      encryptedText: inputToDecrypt,
+      encryptedData,
     });
   });
 });
@@ -54,10 +209,10 @@ describe("validation", () => {
 describe("decryption", () => {
   describe("errors", () => {
     test("corrupted shares", async () => {
-      const textToEncrypt = Buffer.from("Hello world\nNext line please");
       const { privateKey, publicKey } = generatePair();
-      const encryptedText = encryptText(textToEncrypt, publicKey).toString(
-        "base64",
+      const encryptedData = encryptText(
+        "Hello world\nNext line please",
+        publicKey,
       );
       const threshold = 3;
       const privateKeyShares = createShares(keyToHex(privateKey), {
@@ -74,7 +229,7 @@ describe("decryption", () => {
       );
 
       const { expectOutput, stdin } = await render(
-        <face.Component encryptedText={encryptedText} />,
+        <face.Component encryptedData={encryptedData} />,
       );
       await sequence(
         ...privateKeyShares
@@ -90,40 +245,72 @@ describe("decryption", () => {
       expectOutput("Please input share #1", chalk.red("(no input)"));
     });
 
-    test("corrupted input data", async () => {
-      const textToEncrypt = Buffer.from("Hello world\nNext line please");
-      const { privateKey, publicKey } = generatePair();
-      const encryptedText = encryptText(textToEncrypt, publicKey).toString(
-        "base64",
-      );
-      const threshold = 3;
-      const privateKeyShares = createShares(keyToHex(privateKey), {
-        threshold,
-        shares: 5,
-      }).map(serializeShare);
+    describe("corrupted input data", () => {
+      const runWith = async (
+        modifyData: (data: EncryptedData) => EncryptedData,
+        message: string,
+      ) => {
+        const { privateKey, publicKey } = generatePair();
+        const encryptedData = encryptText(
+          "Hello world\nNext line please",
+          publicKey,
+        );
+        const threshold = 3;
+        const privateKeyShares = createShares(keyToHex(privateKey), {
+          threshold,
+          shares: 5,
+        }).map(serializeShare);
 
-      const { expectOutput, stdin } = await render(
-        <face.Component
-          encryptedText={`${encryptedText.slice(0, -10)}malformed`}
-        />,
-      );
-      await sequence(
-        ...privateKeyShares
-          .slice(0, threshold)
-          .map((share) => () => stdin.writeLn(share)),
-      );
-      expectOutput(
-        "Fatal error:",
-        "Can't decrypt text, probably text is corrupt (ERR_OSSL_RSA_DATA_GREATER_THAN_MOD_LEN)",
-        'Press "Enter" to restart',
-      );
+        const { expectOutput, stdin } = await render(
+          <face.Component encryptedData={modifyData(encryptedData)} />,
+        );
+        await sequence(
+          ...privateKeyShares
+            .slice(0, threshold)
+            .map((share) => () => stdin.writeLn(share)),
+        );
+        expectOutput("Fatal error:", message, 'Press "Enter" to restart');
+      };
+
+      const replaceFirstSymbol = (input: string) =>
+        `${input[0] === "x" ? "y" : "x"}${input.slice(1)}`;
+
+      test("initial vector malformed", async () => {
+        await runWith(
+          (encryptedData) => ({
+            ...encryptedData,
+            initVector: replaceFirstSymbol(encryptedData.initVector),
+          }),
+          `Can't decrypt text, probably initial vector or auth tag is corrupt.`,
+        );
+      });
+
+      test("auth tag malformed", async () => {
+        await runWith(
+          (encryptedData) => ({
+            ...encryptedData,
+            authTag: replaceFirstSymbol(encryptedData.authTag),
+          }),
+          `Can't decrypt text, probably initial vector or auth tag is corrupt.`,
+        );
+      });
+
+      test("symmetric key malformed", async () => {
+        await runWith(
+          (encryptedData) => ({
+            ...encryptedData,
+            encryptedAesKey: replaceFirstSymbol(encryptedData.encryptedAesKey),
+          }),
+          "Can't decrypt text, probably text is corrupt.",
+        );
+      });
     });
 
-    test("incorrect share format", async () => {
-      const textToEncrypt = Buffer.from("Hello world\nNext line please");
+    test("malformed share format", async () => {
       const { privateKey, publicKey } = generatePair();
-      const encryptedText = encryptText(textToEncrypt, publicKey).toString(
-        "base64",
+      const encryptedData = encryptText(
+        "Hello world\nNext line please",
+        publicKey,
       );
       const threshold = 3;
       const privateKeyShares = createShares(keyToHex(privateKey), {
@@ -134,7 +321,7 @@ describe("decryption", () => {
       );
 
       const { expectOutput, stdin } = await render(
-        <face.Component encryptedText={encryptedText} />,
+        <face.Component encryptedData={encryptedData} />,
       );
       await stdin.writeLn(privateKeyShares[0]);
       expectOutput(
@@ -151,8 +338,12 @@ describe("decryption", () => {
 
     describe("incorrent share format", () => {
       test("some delimiters", async () => {
+        const encryptedData = encryptText(
+          "Hello world\nNext line please",
+          generatePair().publicKey,
+        );
         const { expectOutput, stdin } = await render(
-          <face.Component encryptedText="anything" />,
+          <face.Component encryptedData={encryptedData} />,
         );
         const corruptedShare = "3|05|anything";
         await stdin.writeLn(corruptedShare);
@@ -164,8 +355,12 @@ describe("decryption", () => {
       });
 
       test("no delimiters", async () => {
+        const encryptedData = encryptText(
+          "Hello world\nNext line please",
+          generatePair().publicKey,
+        );
         const { expectOutput, stdin } = await render(
-          <face.Component encryptedText="anything" />,
+          <face.Component encryptedData={encryptedData} />,
         );
         const corruptedShare = "foo";
         await stdin.writeLn(corruptedShare);
@@ -178,10 +373,10 @@ describe("decryption", () => {
     });
 
     test("mixed thresholds in shares", async () => {
-      const textToEncrypt = Buffer.from("Hello world\nNext line please");
       const { privateKey, publicKey } = generatePair();
-      const encryptedText = encryptText(textToEncrypt, publicKey).toString(
-        "base64",
+      const encryptedData = encryptText(
+        "Hello world\nNext line please",
+        publicKey,
       );
       const privateKeyShares = createShares(keyToHex(privateKey), {
         threshold: 3,
@@ -191,7 +386,7 @@ describe("decryption", () => {
       );
 
       const { expectOutput, stdin } = await render(
-        <face.Component encryptedText={encryptedText} />,
+        <face.Component encryptedData={encryptedData} />,
       );
       await stdin.writeLn(privateKeyShares[0]);
       await stdin.writeLn(privateKeyShares[1]);
@@ -204,8 +399,12 @@ describe("decryption", () => {
   });
 
   test("input length properly displayed", async () => {
+    const encryptedData = encryptText(
+      "Hello world\nNext line please",
+      generatePair().publicKey,
+    );
     const { expectOutput, stdin } = await render(
-      <face.Component encryptedText="hello world" />,
+      <face.Component encryptedData={encryptedData} />,
     );
     const expectLastLine = (lastLine: string) => {
       expectOutput("Please input share #1", lastLine);
@@ -225,9 +424,13 @@ describe("decryption", () => {
   });
 
   test("threshold calculated from data properly", async () => {
+    const encryptedData = encryptText(
+      "Hello world\nNext line please",
+      generatePair().publicKey,
+    );
     const threshold = 2 + Math.floor(Math.random() * 100);
     const { expectOutput, stdin } = await render(
-      <face.Component encryptedText="hello world" />,
+      <face.Component encryptedData={encryptedData} />,
     );
     await stdin.writeLn(
       serializeShare({
@@ -245,9 +448,13 @@ describe("decryption", () => {
   });
 
   test("shares registration displayed properly", async () => {
+    const encryptedData = encryptText(
+      "Hello world\nNext line please",
+      generatePair().publicKey,
+    );
     const threshold = 5 + Math.floor(Math.random() * 10);
     const { expectOutput, stdin } = await render(
-      <face.Component encryptedText="hello world" />,
+      <face.Component encryptedData={encryptedData} />,
     );
     await sequence(
       ...new Array(threshold - 1).fill(null).map((_, index) => async () => {
@@ -273,11 +480,9 @@ describe("decryption", () => {
   });
 
   test("decryption handled successfully", async () => {
-    const textToEncrypt = Buffer.from("Hello world\nNext line please");
+    const textToEncrypt = "Hello world\nNext line please";
     const { privateKey, publicKey } = generatePair();
-    const encryptedText = encryptText(textToEncrypt, publicKey).toString(
-      "base64",
-    );
+    const encryptedData = encryptText(textToEncrypt, publicKey);
     const threshold = 3;
     const privateKeyShares = createShares(keyToHex(privateKey), {
       threshold,
@@ -295,13 +500,13 @@ describe("decryption", () => {
     });
 
     const { expectOutput, stdin } = await render(
-      <face.Component encryptedText={encryptedText} />,
+      <face.Component encryptedData={encryptedData} />,
     );
     await sequence(
       ...privateKeyShares
         .slice(0, threshold)
         .map((privateKeyShare) => () => stdin.writeLn(privateKeyShare)),
     );
-    expectOutput("Decrypt result:", textToEncrypt.toString());
+    expectOutput("Decrypt result:", textToEncrypt);
   });
 });

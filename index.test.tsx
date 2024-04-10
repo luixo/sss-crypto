@@ -7,7 +7,7 @@ import { createProgram } from "./index";
 import { face as encryptFace } from "./faces/encrypt";
 import { face as decryptFace } from "./faces/decrypt";
 import { face as generateSharesFace } from "./faces/generate-shares";
-import { generatePair, parsePublicKey } from "./utils/crypto";
+import { encryptText, generatePair, parsePublicKey } from "./utils/crypto";
 import { keyToPem } from "./utils/encoding";
 import { Face } from "./faces/types";
 
@@ -115,23 +115,16 @@ describe("encrypt", () => {
 
 describe("decrypt", () => {
   const faceMock = mockedFace(decryptFace);
+  const encryptedData = encryptText(`input-content`, generatePair().publicKey);
   beforeEach(() => {
-    faceMock.validator.mockImplementation((opts) => ({
-      encryptedText: opts.input ? `${opts.input}|content` : "",
-    }));
-  });
-
-  test("no text passed", async () => {
-    const { stderr } = await testProgram("decrypt");
-    expectFace(faceMock, [{}], { encryptedText: "" });
-    expect(stderr).toHaveLength(0);
+    faceMock.validator.mockImplementation(() => ({ encryptedData }));
   });
 
   test("text passed", async () => {
     const inputFile = "file.txt";
     const { stderr } = await testProgram(`decrypt -i ${inputFile}`);
     expectFace(faceMock, [{ input: inputFile }], {
-      encryptedText: `${inputFile}|content`,
+      encryptedData,
     });
     expect(stderr).toHaveLength(0);
   });

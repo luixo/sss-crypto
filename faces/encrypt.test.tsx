@@ -6,7 +6,11 @@ import mockfs from "mock-fs";
 import chalk from "chalk";
 import { face } from "./encrypt";
 import { render } from "../utils/render";
-import { decryptText, generatePair } from "../utils/crypto";
+import {
+  decryptText,
+  generatePair,
+  deserializeEncryptedData,
+} from "../utils/crypto";
 import { keyToPem } from "../utils/encoding";
 
 const withBox = (text: string, width: number = 100) => [
@@ -102,16 +106,9 @@ describe("encryption", () => {
         <face.Component publicKey={publicKey} input={textToEncrypt} />,
       );
       const [, ...encryptedText] = lastFrame()!.split("\n");
-      expect(encryptedText.join("")).toHaveLength(344);
+      const encryptedData = deserializeEncryptedData(encryptedText.join(""));
       expectOutput("Encryption result:", ...encryptedText);
-      // We have to decrypt text back as encryptText() is not stable by design
-      // see https://stackoverflow.com/questions/57779904/
-      expect(
-        decryptText(
-          Buffer.from(encryptedText.join(""), "base64"),
-          privateKey,
-        ).toString(),
-      ).toEqual(textToEncrypt);
+      expect(decryptText(encryptedData, privateKey)).toEqual(textToEncrypt);
     });
 
     test("provided manually", async () => {
@@ -125,16 +122,28 @@ describe("encryption", () => {
       expectOutput("Please input text to encrypt:", chalk.red("(no input)"));
       await stdin.writeLn(textToEncrypt);
       const [, ...encryptedText] = lastFrame()!.split("\n");
-      expect(encryptedText.join("")).toHaveLength(344);
+      const encryptedData = deserializeEncryptedData(encryptedText.join(""));
       expectOutput("Encryption result:", ...encryptedText);
-      // We have to decrypt text back as encryptText() is not stable by design
-      // see https://stackoverflow.com/questions/57779904/
-      expect(
-        decryptText(
-          Buffer.from(encryptedText.join(""), "base64"),
-          privateKey,
-        ).toString(),
-      ).toEqual(textToEncrypt);
+      expect(decryptText(encryptedData, privateKey)).toEqual(textToEncrypt);
+    });
+
+    test("long text", async () => {
+      const array = new Uint8Array(10 * 1024);
+      const textToEncrypt = new TextDecoder().decode(
+        crypto.getRandomValues(array).buffer,
+      );
+      const { publicKey, privateKey } = generatePair();
+      const { expectOutput, lastFrame, stdin } = await render(
+        <face.Component publicKey={publicKey} />,
+      );
+      expectOutput("Please input text to encrypt:", chalk.red("(no input)"));
+      await stdin.enter();
+      expectOutput("Please input text to encrypt:", chalk.red("(no input)"));
+      await stdin.writeLn(textToEncrypt);
+      const [, ...encryptedText] = lastFrame()!.split("\n");
+      const encryptedData = deserializeEncryptedData(encryptedText.join(""));
+      expectOutput("Encryption result:", ...encryptedText);
+      expect(decryptText(encryptedData, privateKey)).toEqual(textToEncrypt);
     });
   });
 

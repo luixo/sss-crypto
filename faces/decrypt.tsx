@@ -3,7 +3,12 @@ import { Text, Box, useInput, Newline } from "ink";
 import chalk from "chalk";
 import { sanitizeBase64 } from "../utils/encoding";
 import { ShareObject, combineShares, deserializeShare } from "../utils/shares";
-import { decryptText, parsePrivateKey } from "../utils/crypto";
+import {
+  EncryptedData,
+  decryptText,
+  deserializeEncryptedData,
+  parsePrivateKey,
+} from "../utils/crypto";
 import { Face } from "./types";
 import { Input, type Props as InputProps } from "../utils/input";
 import { readFileSafe } from "../utils/fs";
@@ -58,17 +63,14 @@ export const HiddenInput: React.FC<
 };
 
 const getDecryptedText = (
-  encryptedText: string,
+  encryptedData: EncryptedData,
   shares: ShareObject[],
 ): Stage => {
   try {
     const combinedShares = combineShares(shares);
     const privateKey = parsePrivateKey(Buffer.from(combinedShares, "hex"));
     try {
-      const decryptedText = decryptText(
-        Buffer.from(sanitizeBase64(encryptedText), "base64"),
-        privateKey,
-      ).toString("utf-8");
+      const decryptedText = decryptText(encryptedData, privateKey);
       return { type: "result", result: decryptedText };
     } catch (e) {
       if (
@@ -80,7 +82,19 @@ const getDecryptedText = (
       ) {
         return {
           type: "error",
-          message: `Can't decrypt text, probably text is corrupt (${e.code})`,
+          message: `Can't decrypt text, probably text is corrupt.`,
+        };
+      }
+      if (
+        typeof e === "object" &&
+        e &&
+        "message" in e &&
+        typeof e.message === "string" &&
+        e.message === "Unsupported state or unable to authenticate data"
+      ) {
+        return {
+          type: "error",
+          message: `Can't decrypt text, probably initial vector or auth tag is corrupt.`,
         };
         /* c8 ignore next 3 */
       }
@@ -104,7 +118,7 @@ const getDecryptedText = (
 };
 
 type Props = {
-  encryptedText: string;
+  encryptedData: EncryptedData;
 };
 
 type Stage =
@@ -124,7 +138,7 @@ const initialStage: Stage = {
   threshold: -1,
 };
 
-const Decrypt: React.FC<Props> = ({ encryptedText }) => {
+const Decrypt: React.FC<Props> = ({ encryptedData }) => {
   const [stage, setStage] = React.useState<Stage>(initialStage);
   const onShareInput = React.useCallback(
     (share: ShareObject) => {
@@ -148,7 +162,7 @@ const Decrypt: React.FC<Props> = ({ encryptedText }) => {
           ...prevStage.shares.slice(prevStage.index + 1),
         ];
         if (prevStage.index === nextThreshold - 1) {
-          return getDecryptedText(encryptedText, nextShares);
+          return getDecryptedText(encryptedData, nextShares);
         }
         return {
           ...prevStage,
@@ -159,7 +173,7 @@ const Decrypt: React.FC<Props> = ({ encryptedText }) => {
         };
       });
     },
-    [encryptedText],
+    [encryptedData],
   );
   useInput(
     (_value, key) => {
@@ -228,6 +242,6 @@ export const face: Face<Props, [Partial<Record<string, string>>]> = {
     if (!input || input.length === 0) {
       throw new Error("Input should not be empty to decrypt.");
     }
-    return { encryptedText: input };
+    return { encryptedData: deserializeEncryptedData(input) };
   },
 };

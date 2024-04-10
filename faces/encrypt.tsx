@@ -2,7 +2,11 @@ import * as React from "react";
 import { Text, Box, Newline } from "ink";
 
 import { KeyObject } from "crypto";
-import { encryptText, parsePublicKey } from "../utils/crypto";
+import {
+  encryptText,
+  parsePublicKey,
+  serializeEncryptedData,
+} from "../utils/crypto";
 import { readFileSafe } from "../utils/fs";
 import { Face } from "./types";
 import { useKeepAlive } from "../utils/use-keep-alive";
@@ -40,7 +44,9 @@ const getEncryptedStage = (
   );
   return {
     type: "result",
-    encryptedText: encryptText(Buffer.from(templatedInput), publicKey),
+    encryptedText: serializeEncryptedData(
+      encryptText(templatedInput, publicKey),
+    ),
   };
 };
 
@@ -74,7 +80,7 @@ type Stage =
       substituteIndex: number;
       substitutes: (null | string)[];
     }
-  | { type: "result"; encryptedText: Buffer };
+  | { type: "result"; encryptedText: string };
 
 const Encrypt: React.FC<Props> = ({ input: initialInput, publicKey }) => {
   const [stage, setStage] = React.useState<Stage>(() => {
@@ -212,7 +218,7 @@ const Encrypt: React.FC<Props> = ({ input: initialInput, publicKey }) => {
       return (
         <Box flexDirection="column">
           <Text>Encryption result:</Text>
-          <Text>{stage.encryptedText.toString("base64")}</Text>
+          <Text>{stage.encryptedText}</Text>
         </Box>
       );
     }
