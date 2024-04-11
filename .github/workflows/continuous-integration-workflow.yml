@@ -75,3 +75,20 @@ jobs:
           valColorRange: ${{ needs.test.outputs.coverage }}
           minColorRange: 50
           maxColorRange: 100
+
+  backup-to-s3:
+    name: Backup repository to S3
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - run: mkdir backups
+      - name: Bundle git
+        run: git bundle create backups/sss-crypto.bundle HEAD main
+      - uses: shallwefootball/s3-upload-action@master
+        with:
+          aws_key_id: ${{ secrets.AWS_KEY_ID }}
+          aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY}}
+          aws_bucket: ${{ secrets.AWS_BUCKET }}
+          endpoint: ${{ secrets.AWS_ENDPOINT }}
+          source_dir: backups
+          destination_dir: .
