@@ -2,8 +2,9 @@ import React from "react";
 
 import { expect, test, describe, afterEach } from "vitest";
 import mockfs from "mock-fs";
-
 import chalk from "chalk";
+import stripAnsi from "strip-ansi";
+
 import { face } from "./encrypt";
 import { render } from "../utils/render";
 import {
@@ -13,9 +14,18 @@ import {
 } from "../utils/crypto";
 import { keyToPem } from "../utils/encoding";
 
-const withBox = (text: string, width: number = 100) => [
+const padEndChalked = (
+  text: string,
+  targetLength: number,
+  fillString: string,
+) => {
+  const actualLength = stripAnsi(text).length;
+  return `${text}${fillString.repeat((targetLength - actualLength) / fillString.length)}`;
+};
+
+const withBox = (text: string, width: number) => [
   `+${"".padEnd(width - 2, "-")}+`,
-  `|${text.padEnd(width + 10 - 2, " ")}|`,
+  `|${padEndChalked(text, width - 2, " ")}|`,
   `+${"".padEnd(width - 2, "-")}+`,
 ];
 
@@ -173,12 +183,13 @@ describe("encryption", () => {
       const textToEncrypt =
         "Hello <% enter your name %>, this is <% enter other name %> and <% what should we say? %>!";
       const { publicKey } = generatePair();
-      const { expectOutput, stdin } = await render(
+      const { expectOutput, stdin, stdout } = await render(
         <face.Component publicKey={publicKey} input={textToEncrypt} />,
       );
       expectOutput(
         ...withBox(
           `Hello ${chalk.green("<% enter your name %>")}, this is ...`,
+          stdout.columns,
         ),
         "Please input a substitute:",
         chalk.red("(no input)"),
@@ -188,6 +199,7 @@ describe("encryption", () => {
         "✔️  [enter your name -> 5 symbol(s)]",
         ...withBox(
           `..., this is ${chalk.green("<% enter other name %>")} and <% wh...`,
+          stdout.columns,
         ),
         "Please input a substitute:",
         chalk.red("(no input)"),
@@ -196,7 +208,10 @@ describe("encryption", () => {
       expectOutput(
         "✔️  [enter your name -> 5 symbol(s)]",
         "✔️  [enter other name -> 3 symbol(s)]",
-        ...withBox(`...me %> and ${chalk.green("<% what should we say? %>")}`),
+        ...withBox(
+          `...me %> and ${chalk.green("<% what should we say? %>")}`,
+          stdout.columns,
+        ),
         "Please input a substitute:",
         chalk.red("(no input)"),
       );
@@ -205,18 +220,21 @@ describe("encryption", () => {
     test("border case without dots", async () => {
       const textToEncrypt = "<% start %> and <% end %>";
       const { publicKey } = generatePair();
-      const { expectOutput, stdin } = await render(
+      const { expectOutput, stdin, stdout } = await render(
         <face.Component publicKey={publicKey} input={textToEncrypt} />,
       );
       expectOutput(
-        ...withBox(`${chalk.green("<% start %>")} and <% en...`),
+        ...withBox(
+          `${chalk.green("<% start %>")} and <% en...`,
+          stdout.columns,
+        ),
         "Please input a substitute:",
         chalk.red("(no input)"),
       );
       await stdin.writeLn("Alice");
       expectOutput(
         "✔️  [start -> 5 symbol(s)]",
-        ...withBox(`...rt %> and ${chalk.green("<% end %>")}`),
+        ...withBox(`...rt %> and ${chalk.green("<% end %>")}`, stdout.columns),
         "Please input a substitute:",
         chalk.red("(no input)"),
       );
@@ -226,7 +244,7 @@ describe("encryption", () => {
       const textToEncrypt =
         "Hello <% enter your name %>, this is <% enter other name %> and <% what should we say? %>!";
       const { publicKey } = generatePair();
-      const { expectOutput, stdin, lastFrame } = await render(
+      const { expectOutput, stdin, stdout, lastFrame } = await render(
         <face.Component publicKey={publicKey} input={textToEncrypt} />,
       );
       await stdin.writeLn("Alice");
@@ -241,6 +259,7 @@ describe("encryption", () => {
         "✔️  [what should we say? -> 7 symbol(s)]",
         ...withBox(
           `..., this is ${chalk.green("<% enter other name %>")} and <% wh...`,
+          stdout.columns,
         ),
         "Please input a substitute:",
         chalk.green("Bob"),
@@ -250,7 +269,10 @@ describe("encryption", () => {
         "✔️  [enter your name -> 5 symbol(s)]",
         "✔️  [enter other name -> 3 symbol(s)]",
         chalk.green("✔️  [what should we say? -> 7 symbol(s)]"),
-        ...withBox(`...me %> and ${chalk.green("<% what should we say? %>")}`),
+        ...withBox(
+          `...me %> and ${chalk.green("<% what should we say? %>")}`,
+          stdout.columns,
+        ),
         "Please input a substitute:",
         chalk.green("Charlie"),
       );

@@ -23,7 +23,7 @@ type ExtendedRender = {
   expectOutput: (...expected: (string | null)[]) => void;
   expectEncrypted: (opts: {
     privateKey: KeyObject;
-    getEncrypted?: (actual: string[]) => string;
+    getEncrypted: (actual: string[]) => string;
     expected: string;
   }) => void;
 };
@@ -83,11 +83,7 @@ export const render = async (
     ...rest,
     stdin: { write, writeLn, enter, backspace, leftArrow, rightArrow },
     expectOutput,
-    expectEncrypted: ({
-      privateKey,
-      getEncrypted = (input) => input.join("\n"),
-      expected,
-    }) => {
+    expectEncrypted: ({ privateKey, getEncrypted, expected }) => {
       const actual = getEncrypted(rest.lastFrame()!.split("\n"));
       const encryptedData = deserializeEncryptedData(actual);
       expect(decryptText(encryptedData, privateKey)).toEqual(expected);

@@ -4291,6 +4291,7 @@ __metadata:
     prettier: "npm:^3.2.5"
     react: "npm:~18.2.0"
     secrets.js: "git+https://git@github.com/grempe/secrets.js.git"
+    strip-ansi: "npm:^7.1.0"
     tsx: "npm:~4.7.1"
     typescript: "npm:^5.3.3"
     valibot: "npm:^0.29.0"
