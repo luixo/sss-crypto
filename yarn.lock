@@ -2501,27 +2501,15 @@ __metadata:
   languageName: node
   linkType: hard
 
-"ink-testing-library@npm:3.0.0":
-  version: 3.0.0
-  resolution: "ink-testing-library@npm:3.0.0"
+"ink-testing-library@npm:^4.0.0":
+  version: 4.0.0
+  resolution: "ink-testing-library@npm:4.0.0"
   peerDependencies:
     "@types/react": ">=18.0.0"
   peerDependenciesMeta:
     "@types/react":
       optional: true
-  checksum: 10c0/b1b98ba50c8dc00b7e2e29ab7e508770d448584af7ae2c9b71939ede28884d2d4a9b7e47c2cdeab97acb0ac5c50948b6a5e435263920b8b4b99df5159b0a5b35
-  languageName: node
-  linkType: hard
-
-"ink-testing-library@patch:ink-testing-library@npm%3A3.0.0#./patches/ink-testing-library-npm-3.0.0.patch::locator=sss-crypto%40workspace%3A.":
-  version: 3.0.0
-  resolution: "ink-testing-library@patch:ink-testing-library@npm%3A3.0.0#./patches/ink-testing-library-npm-3.0.0.patch::version=3.0.0&hash=2586f9&locator=sss-crypto%40workspace%3A."
-  peerDependencies:
-    "@types/react": ">=18.0.0"
-  peerDependenciesMeta:
-    "@types/react":
-      optional: true
-  checksum: 10c0/6262e3b64cd3ee0d4b7f62860d77c2864241f37becdefc721e0844126290e909b61dc29fcf2e28f8609429e92451a416883a67b8a1d444c200edd78ec57c6ec1
+  checksum: 10c0/88d9b70c1e3881cf2d32d678a27e689bfc03c02553d8c06bc4db97ac06d812be9b74f29009a66673f2cc036e01545894bf412dce50ed7ac668f3c68e8c046efd
   languageName: node
   linkType: hard
 
@@ -4284,7 +4272,7 @@ __metadata:
     eslint-plugin-react-hooks: "npm:^4.6.0"
     eslint-plugin-vitest: "npm:^0.3.26"
     ink: "npm:4.4.0"
-    ink-testing-library: "npm:^3.0.0"
+    ink-testing-library: "npm:^4.0.0"
     lint-staged: "npm:^15.2.2"
     mock-fs: "npm:^5.2.0"
     pre-commit: "npm:^1.2.2"
