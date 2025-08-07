@@ -41,7 +41,7 @@ const getBase64ByteLength = (initialBytes: number) =>
 
 export const deserializeEncryptedData = (encryptedBox: string) => {
   const [tag, initVector, authTag, encryptedAesKey, encryptedText, ...rest] =
-    encryptedBox.split("|");
+    encryptedBox.split("|").map((element) => element.replaceAll(/\s/g, ""));
   if (!tag || tag !== brandingTag) {
     throw new Error(
       `Data is invalid, expected data with "${brandingTag}" prefix.`,
