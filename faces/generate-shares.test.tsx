@@ -7,21 +7,18 @@ import mockfs from "mock-fs";
 import chalk from "chalk";
 import { face } from "./generate-shares";
 import { render } from "../utils/render";
+import { decryptText, encryptText, parsePublicKey } from "../utils/crypto";
+import { deserializeShare } from "../utils/shares";
 import {
-  decryptText,
-  encryptText,
-  parsePrivateKey,
-  parsePublicKey,
-} from "../utils/crypto";
-import { combineShares, deserializeShare } from "../utils/shares";
+  PUBLIC_KEY_LENGTH,
+  SHARE_LENGTH,
+  SHARE_PREFIX_LENGTH,
+} from "../utils/consts";
+import { sharesToPrivateKey } from "../utils/converters";
 
 afterEach(() => {
   mockfs.restore();
 });
-
-const PUBLIC_KEY_LENGTH = 360;
-const SHARE_PREFIX_LENGTH = 6; // <threshold>|<bits>|<id>
-const SHARE_LENGTH = 1600;
 
 const getWithValid = (override: Partial<Record<string, string>>) => ({
   threshold: "2",
@@ -195,12 +192,7 @@ describe("shares generation", () => {
     );
     const decryptedText = decryptText(
       encryptedData,
-      parsePrivateKey(
-        Buffer.from(
-          combineShares(serializedShares.map(deserializeShare)),
-          "hex",
-        ),
-      ),
+      sharesToPrivateKey(serializedShares.map(deserializeShare)),
     );
     expect(textToEncrypt).toEqual(decryptedText);
   });

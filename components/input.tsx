@@ -22,7 +22,6 @@ export const Input: React.FC<Props> = ({
 }) => {
   const [input, setInput] = React.useState(() => initialValue);
   useInput((value, key) => {
-    onKeystroke?.(value);
     if (key.leftArrow || key.rightArrow) {
       onArrow?.(key.leftArrow ? "left" : "right", input);
     } else if (key.return) {
@@ -32,6 +31,7 @@ export const Input: React.FC<Props> = ({
     } else {
       setInput((prevInput) => parseInput(prevInput + value));
     }
+    onKeystroke?.(value);
   });
   if (input.length === 0) {
     return <Text color="red">(no input)</Text>;

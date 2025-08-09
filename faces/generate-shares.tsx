@@ -6,9 +6,12 @@ import { number, coerce, safeParse, toMinValue } from "valibot";
 
 import { Stats } from "node:fs";
 import { generatePair } from "../utils/crypto";
-import { createShares, SharesOptions, serializeShare } from "../utils/shares";
-import { keyToHex, keyToPem } from "../utils/encoding";
+import { SharesOptions } from "../utils/shares";
+import { keyToPem } from "../utils/encoding";
 import { Face } from "./types";
+import { SaveDataWarning } from "../components/save-data-warning";
+import { Shares } from "../components/shares";
+import { privateKeyToShares } from "../utils/converters";
 
 const rootPath = path.resolve(
   path.dirname(new URL(import.meta.url).pathname),
@@ -53,7 +56,7 @@ const GenerateShares: React.FC<Props> = ({ pubKeyFilePath, ...props }) => {
   const [{ shares: generatedShares, publicKey }] = React.useState(() => {
     const pair = generatePair();
     return {
-      shares: createShares(keyToHex(pair.privateKey), props),
+      shares: privateKeyToShares(pair.privateKey, props),
       publicKey: keyToPem(pair.publicKey),
     };
   });
@@ -67,9 +70,7 @@ const GenerateShares: React.FC<Props> = ({ pubKeyFilePath, ...props }) => {
   }, [pubKeyFilePath, publicKey]);
   return (
     <Box flexDirection="column" gap={1}>
-      <Text color="yellow">
-        ! Save this data, it will be erased when you close the terminal !
-      </Text>
+      <SaveDataWarning />
       <Box flexDirection="column">
         {pubKeyFilePath ? (
           <WriteFileStatusIndicator
@@ -84,12 +85,7 @@ const GenerateShares: React.FC<Props> = ({ pubKeyFilePath, ...props }) => {
           </Box>
         )}
       </Box>
-      {generatedShares.map((share, index) => (
-        <Box key={index} flexDirection="column">
-          <Text color="green">Share #{index + 1}</Text>
-          <Text>{serializeShare(share)}</Text>
-        </Box>
-      ))}
+      <Shares shares={generatedShares} />
       <Newline />
     </Box>
   );

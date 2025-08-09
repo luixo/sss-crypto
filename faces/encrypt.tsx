@@ -9,8 +9,8 @@ import {
 } from "../utils/crypto";
 import { readFileSafe } from "../utils/fs";
 import { Face } from "./types";
-import { useKeepAlive } from "../utils/use-keep-alive";
-import { Input } from "../utils/input";
+import { useKeepAlive } from "../hooks/use-keep-alive";
+import { Input } from "../components/input";
 
 const START_TEMPLATE = "<%";
 const END_TEMPLATE = "%>";

@@ -11,11 +11,12 @@ import {
   generatePair,
   serializeEncryptedData,
 } from "../utils/crypto";
-import { createShares, serializeShare } from "../utils/shares";
-import { keyToHex } from "../utils/encoding";
+import { serializeShare } from "../utils/shares";
 import { render } from "../utils/render";
 import { sequence } from "../utils/promise";
 import { pickRandom } from "../utils/array";
+import { SHARE_LENGTH } from "../utils/consts";
+import { privateKeyToShares } from "../utils/converters";
 
 afterEach(() => {
   mockfs.restore();
@@ -215,7 +216,7 @@ describe("decryption", () => {
         publicKey,
       );
       const threshold = 3;
-      const privateKeyShares = createShares(keyToHex(privateKey), {
+      const privateKeyShares = privateKeyToShares(privateKey, {
         threshold,
         shares: 5,
       }).map((share) =>
@@ -225,6 +226,34 @@ describe("decryption", () => {
             Buffer.from(share.data, "base64").toString("hex").slice(0, -10),
             "hex",
           ).toString("base64"),
+        }),
+      );
+
+      const { expectOutput, stdin } = await render(
+        <face.Component encryptedData={encryptedData} />,
+      );
+      await stdin.writeLn(privateKeyShares[0]);
+      expectOutput(
+        "Please input share #1",
+        chalk.green("(input of length 1602)"),
+        "Error: Share format is incorrect",
+      );
+    });
+
+    test("invalid shares", async () => {
+      const { privateKey, publicKey } = generatePair();
+      const encryptedData = encryptText(
+        "Hello world\nNext line please",
+        publicKey,
+      );
+      const threshold = 3;
+      const privateKeyShares = privateKeyToShares(privateKey, {
+        threshold,
+        shares: 5,
+      }).map((share) =>
+        serializeShare({
+          ...share,
+          data: share.data[0] === "a" ? "b" : `a${share.data.slice(1)}`,
         }),
       );
 
@@ -256,7 +285,7 @@ describe("decryption", () => {
           publicKey,
         );
         const threshold = 3;
-        const privateKeyShares = createShares(keyToHex(privateKey), {
+        const privateKeyShares = privateKeyToShares(privateKey, {
           threshold,
           shares: 5,
         }).map(serializeShare);
@@ -313,7 +342,7 @@ describe("decryption", () => {
         publicKey,
       );
       const threshold = 3;
-      const privateKeyShares = createShares(keyToHex(privateKey), {
+      const privateKeyShares = privateKeyToShares(privateKey, {
         threshold,
         shares: 5,
       }).map((share) =>
@@ -378,7 +407,7 @@ describe("decryption", () => {
         "Hello world\nNext line please",
         publicKey,
       );
-      const privateKeyShares = createShares(keyToHex(privateKey), {
+      const privateKeyShares = privateKeyToShares(privateKey, {
         threshold: 3,
         shares: 5,
       }).map((share, index) =>
@@ -437,7 +466,7 @@ describe("decryption", () => {
         threshold,
         bits: 8,
         id: 1,
-        data: Buffer.from("foo").toString("base64"),
+        data: Buffer.from("a".repeat(SHARE_LENGTH * 0.75)).toString("base64"),
       }),
     );
     expectOutput(
@@ -463,7 +492,9 @@ describe("decryption", () => {
             threshold,
             bits: 8,
             id: index + 1,
-            data: Buffer.from("foo").toString("base64"),
+            data: Buffer.from("a".repeat(SHARE_LENGTH * 0.75)).toString(
+              "base64",
+            ),
           }),
         );
         expectOutput(
@@ -484,7 +515,7 @@ describe("decryption", () => {
     const { privateKey, publicKey } = generatePair();
     const encryptedData = encryptText(textToEncrypt, publicKey);
     const threshold = 3;
-    const privateKeyShares = createShares(keyToHex(privateKey), {
+    const privateKeyShares = privateKeyToShares(privateKey, {
       threshold,
       shares: 5,
     }).map((share) => {

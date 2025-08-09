@@ -5,6 +5,7 @@ import { render } from "ink";
 import { face as generateSharesFace } from "./faces/generate-shares";
 import { face as encryptFace } from "./faces/encrypt";
 import { face as decryptFace } from "./faces/decrypt";
+import { face as addShareFace } from "./faces/add-share";
 import { Face } from "./faces/types";
 
 export const createProgram = () => {
@@ -38,6 +39,12 @@ export const createProgram = () => {
     .description("Decrypt a message with k out of n shares")
     .option("-i, --input <text>", "path to a file to decrypt")
     .action((options) => handleFace(decryptFace)(options));
+
+  program
+    .command("add-share")
+    .description("Add a new share")
+    .option("-n, --amount <amount>", "amount of newly added shares")
+    .action((options) => handleFace(addShareFace)(options));
 
   program
     .command("encrypt")
