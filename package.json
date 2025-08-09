@@ -6,7 +6,7 @@
   "type": "module",
   "packageManager": "yarn@4.1.0",
   "scripts": {
-    "start": "tsx index.tsx",
+    "start": "node --import=tsx index.tsx",
     "test": "vitest",
     "typecheck": "tsc --noEmit",
     "format": "prettier --write '**/*.{js,ts,tsx,json}'",
@@ -22,7 +22,7 @@
     "prettier": "^3.2.5",
     "react": "~18.2.0",
     "secrets.js": "git+https://git@github.com/grempe/secrets.js.git",
-    "tsx": "~4.7.1",
+    "tsx": "^4.20.3",
     "valibot": "^0.29.0"
   },
   "devDependencies": {
