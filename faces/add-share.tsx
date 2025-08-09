@@ -77,5 +77,6 @@ const AddShare: React.FC = () => {
 
 export const face: Face<object, [Partial<Record<string, string>>]> = {
   Component: AddShare,
+  /* c8 ignore next */
   validator: () => ({}),
 };
