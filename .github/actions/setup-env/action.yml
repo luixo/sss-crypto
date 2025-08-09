@@ -2,15 +2,14 @@ name: Setup node with .nvmrc
 runs:
   using: composite
   steps:
-    - uses: actions/setup-node@v3
-      with:
-        node-version-file: .nvmrc
     - name: Enable Corepack
       run: corepack enable
       shell: bash
-    - uses: actions/setup-node@v3
+    - name: Setup Node.json
+      uses: actions/setup-node@v4
       with:
+        node-version-file: .nvmrc
         cache: "yarn"
     - name: Install dependencies
-      run: corepack yarn install --immutable
+      run: yarn install --immutable
       shell: bash

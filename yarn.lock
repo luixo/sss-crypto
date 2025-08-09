@@ -574,12 +574,21 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/node@npm:*, @types/node@npm:^20.11.24":
+"@types/node@npm:*":
   version: 20.11.24
   resolution: "@types/node@npm:20.11.24"
   dependencies:
     undici-types: "npm:~5.26.4"
   checksum: 10c0/5a62225eb4797b41e6953f9c08c4611d607b5422ddd153312fc81ed6ed37115228ae27e3e3caa1a3bf52d88310306a196ba1cfbd8b2ec918a20f64d80dfa22c9
+  languageName: node
+  linkType: hard
+
+"@types/node@npm:^24.2.1":
+  version: 24.2.1
+  resolution: "@types/node@npm:24.2.1"
+  dependencies:
+    undici-types: "npm:~7.10.0"
+  checksum: 10c0/439a3c7edf88a298e0c92e46f670234070b892589c3b06e82cc86c47a7e1cf220f4a4b4736ec6ac7e4b9e1c40d7b6d443a1e22f99dd17f13f9dd15de3b32011b
   languageName: node
   linkType: hard
 
@@ -4257,7 +4266,7 @@ __metadata:
   dependencies:
     "@types/eslint": "npm:^8"
     "@types/mock-fs": "npm:^4.13.4"
-    "@types/node": "npm:^20.11.24"
+    "@types/node": "npm:^24.2.1"
     "@types/react": "npm:^18.2.61"
     "@typescript-eslint/eslint-plugin": "npm:^7.2.0"
     "@typescript-eslint/parser": "npm:^7.2.0"
@@ -4708,6 +4717,13 @@ __metadata:
   version: 5.26.5
   resolution: "undici-types@npm:5.26.5"
   checksum: 10c0/bb673d7876c2d411b6eb6c560e0c571eef4a01c1c19925175d16e3a30c4c428181fb8d7ae802a261f283e4166a0ac435e2f505743aa9e45d893f9a3df017b501
+  languageName: node
+  linkType: hard
+
+"undici-types@npm:~7.10.0":
+  version: 7.10.0
+  resolution: "undici-types@npm:7.10.0"
+  checksum: 10c0/8b00ce50e235fe3cc601307f148b5e8fb427092ee3b23e8118ec0a5d7f68eca8cee468c8fc9f15cbb2cf2a3797945ebceb1cbd9732306a1d00e0a9b6afa0f635
   languageName: node
   linkType: hard
 
