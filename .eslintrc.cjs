@@ -23,8 +23,10 @@ module.exports = {
         devDependencies: [
           "**/*.test.ts",
           "**/*.test.tsx",
+          "__mocks__/**/*",
           "vitest.config.ts",
           "utils/render.ts",
+          "setup.ts",
         ],
       },
     ],

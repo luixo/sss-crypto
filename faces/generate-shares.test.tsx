@@ -1,8 +1,7 @@
 import React from "react";
 
 import fs from "node:fs/promises";
-import { expect, test, describe, afterEach } from "vitest";
-import mockfs from "mock-fs";
+import { expect, test, describe } from "vitest";
 
 import chalk from "chalk";
 import { face } from "./generate-shares";
@@ -17,11 +16,7 @@ import {
 import { sharesToPrivateKey } from "../utils/converters";
 import { validate } from "../utils/validation";
 
-afterEach(() => {
-  mockfs.restore();
-});
-
-const getWithValid = (override: Partial<Record<string, string>>) => ({
+const getWithValid = (override: Partial<Record<string, string>> = {}) => ({
   threshold: "2",
   shares: "10",
   pubOutput: "pub.key",
@@ -62,7 +57,7 @@ describe("validation", () => {
 
   test("public key output", async () => {
     const dirPath = "path/to/dir";
-    mockfs({ [dirPath]: {} });
+    fs.mkdir(dirPath, { recursive: true });
     await expect(() =>
       validate(face.schema, getWithValid({ pubOutput: dirPath })),
     ).rejects.toThrow("Public key path should not be a directory.");
@@ -70,9 +65,10 @@ describe("validation", () => {
     await expect(() =>
       validate(face.schema, getWithValid({ pubOutput: outsideDirPath })),
     ).rejects.toThrow("Public key only can be written in a current directory.");
+    await fs.writeFile("pub2.key", "output");
     expect(
-      await validate(face.schema, getWithValid({ pubOutput: "pub.key" })),
-    ).toEqual({ threshold: 2, shares: 10, pubKeyFilePath: "pub.key" });
+      await validate(face.schema, getWithValid({ pubOutput: "pub2.key" })),
+    ).toEqual({ threshold: 2, shares: 10, pubKeyFilePath: "pub2.key" });
     expect(
       await validate(face.schema, getWithValid({ pubOutput: undefined })),
     ).toEqual({ threshold: 2, shares: 10, pubKeyFilePath: undefined });
@@ -117,7 +113,6 @@ describe("shares generation", () => {
   });
 
   test("with pub key file path", async () => {
-    mockfs({});
     const pubKeyPath = "pub.key";
     const sharesAmount = 5;
     const { lastFrame } = await render(

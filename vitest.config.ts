@@ -8,5 +8,6 @@ export default defineConfig({
       enabled: true,
       reporter: [...(configDefaults.coverage.reporter || []), "json-summary"],
     },
+    setupFiles: "setup.ts",
   },
 });

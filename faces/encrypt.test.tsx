@@ -1,7 +1,7 @@
 import React from "react";
 
-import { expect, test, describe, afterEach } from "vitest";
-import mockfs from "mock-fs";
+import { expect, test, describe } from "vitest";
+import fs from "node:fs/promises";
 import chalk from "chalk";
 import stripAnsi from "strip-ansi";
 
@@ -30,50 +30,49 @@ const withBox = (text: string, width: number) => [
   `+${"".padEnd(width - 2, "-")}+`,
 ];
 
-afterEach(() => {
-  mockfs.restore();
-});
-
 describe("validation", () => {
   describe("pub key file", () => {
     test("file does not exist", async () => {
-      expect(() =>
+      await expect(() =>
         validate(face.schema, { pub: "non-existent" }),
       ).rejects.toThrow('At "pub": Path "non-existent" does not exist.');
     });
 
     test("target is a directory", async () => {
       const dirPath = "path/to/dir";
-      mockfs({ [dirPath]: {} });
-      expect(() => validate(face.schema, { pub: dirPath })).rejects.toThrow(
-        'At "pub": File "path/to/dir" is not a file.',
-      );
+      fs.mkdir(dirPath, { recursive: true });
+      await expect(() =>
+        validate(face.schema, { pub: dirPath }),
+      ).rejects.toThrow('At "pub": File "path/to/dir" is not a file.');
     });
 
     test("public key data is invalid", async () => {
       const publicKeyData = "This is not a public key";
       const pubKeyPath = "path/to/pub.key";
-      mockfs({ [pubKeyPath]: publicKeyData });
-      expect(() => validate(face.schema, { pub: pubKeyPath })).rejects.toThrow(
-        "Can't read public key, probably data is corrupted.",
-      );
+      await fs.writeFile(pubKeyPath, publicKeyData);
+      await expect(() =>
+        validate(face.schema, { pub: pubKeyPath }),
+      ).rejects.toThrow("Can't read public key, probably data is corrupted.");
     });
   });
 
   describe("input file", () => {
     test("file does not exist", async () => {
       const pubKeyPath = "path/to/pub.key";
-      mockfs({ [pubKeyPath]: "" });
-      expect(() =>
+      const { publicKey } = generatePair();
+      await fs.writeFile(pubKeyPath, keyToPem(publicKey));
+      await expect(() =>
         validate(face.schema, { pub: pubKeyPath, input: "non-existent" }),
       ).rejects.toThrow('At "input": Path "non-existent" does not exist.');
     });
 
     test("target is a directory", async () => {
       const pubKeyPath = "path/to/pub.key";
+      const { publicKey } = generatePair();
+      await fs.writeFile(pubKeyPath, keyToPem(publicKey));
       const dirPath = "path/to/dir";
-      mockfs({ [pubKeyPath]: "", [dirPath]: {} });
-      expect(() =>
+      await fs.mkdir(dirPath, { recursive: true });
+      await expect(() =>
         validate(face.schema, { pub: pubKeyPath, input: dirPath }),
       ).rejects.toThrow('At "input": File "path/to/dir" is not a file.');
     });
@@ -84,7 +83,8 @@ describe("validation", () => {
     const pubKeyPath = "path/to/pub.key";
     const inputPath = "path/to/input.txt";
     const inputToEncrypt = "input to encrypt";
-    mockfs({ [pubKeyPath]: keyToPem(publicKey), [inputPath]: inputToEncrypt });
+    await fs.writeFile(pubKeyPath, keyToPem(publicKey));
+    await fs.writeFile(inputPath, inputToEncrypt);
     const { publicKey: parsedPublicKey, input } = await validate(face.schema, {
       pub: pubKeyPath,
       input: inputPath,

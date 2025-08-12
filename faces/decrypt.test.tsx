@@ -1,8 +1,8 @@
 import React from "react";
 
-import { expect, test, describe, afterEach } from "vitest";
+import { expect, test, describe } from "vitest";
 import chalk from "chalk";
-import mockfs from "mock-fs";
+import fs from "node:fs/promises";
 
 import { face } from "./decrypt";
 import {
@@ -19,32 +19,27 @@ import { SHARE_LENGTH } from "../utils/consts";
 import { privateKeyToShares } from "../utils/converters";
 import { validate } from "../utils/validation";
 
-afterEach(() => {
-  mockfs.restore();
-});
-
 describe("validation", () => {
   describe("input file", () => {
     test("file does not exist", async () => {
-      mockfs({});
-      expect(() =>
+      await expect(() =>
         validate(face.schema, { input: "non-existent" }),
       ).rejects.toThrow('At "input": Path "non-existent" does not exist.');
     });
 
     test("target is a directory", async () => {
       const dirPath = "path/to/dir";
-      mockfs({ [dirPath]: {} });
-      expect(() => validate(face.schema, { input: dirPath })).rejects.toThrow(
-        'At "input": File "path/to/dir" is not a file.',
-      );
+      await fs.mkdir(dirPath, { recursive: true });
+      await expect(() =>
+        validate(face.schema, { input: dirPath }),
+      ).rejects.toThrow('At "input": File "path/to/dir" is not a file.');
     });
 
     describe("deserializing encrypted data", () => {
       test("no branding tag", async () => {
         const inputPath = "path/to/input.txt";
-        mockfs({ [inputPath]: "x" });
-        expect(() =>
+        await fs.writeFile(inputPath, "x");
+        await expect(() =>
           validate(face.schema, { input: inputPath }),
         ).rejects.toThrow(
           `Data is invalid, expected data with "sss-enc" prefix.`,
@@ -58,8 +53,8 @@ describe("validation", () => {
           generatePair().publicKey,
         );
         const serializedData = serializeEncryptedData(encryptedData);
-        mockfs({ [inputPath]: serializedData.slice(1) });
-        expect(() =>
+        await fs.writeFile(inputPath, serializedData.slice(1));
+        await expect(() =>
           validate(face.schema, { input: inputPath }),
         ).rejects.toThrow(
           `Data is invalid, expected data with "sss-enc" prefix.`,
@@ -73,10 +68,11 @@ describe("validation", () => {
           generatePair().publicKey,
         );
         const serializedData = serializeEncryptedData(encryptedData);
-        mockfs({
-          [inputPath]: serializedData.split("|").slice(0, 1).join("|"),
-        });
-        expect(() =>
+        await fs.writeFile(
+          inputPath,
+          serializedData.split("|").slice(0, 1).join("|"),
+        );
+        await expect(() =>
           validate(face.schema, { input: inputPath }),
         ).rejects.toThrow("No initial vector on decryption.");
       });
@@ -87,13 +83,14 @@ describe("validation", () => {
           "input to encrypt",
           generatePair().publicKey,
         );
-        mockfs({
-          [inputPath]: serializeEncryptedData({
+        await fs.writeFile(
+          inputPath,
+          serializeEncryptedData({
             ...encryptedData,
             initVector: `${encryptedData.initVector.slice(0, -10)}malformed`,
           }),
-        });
-        expect(() =>
+        );
+        await expect(() =>
           validate(face.schema, { input: inputPath }),
         ).rejects.toThrow("Initial vector has to have length of 24 bytes.");
       });
@@ -105,10 +102,11 @@ describe("validation", () => {
           generatePair().publicKey,
         );
         const serializedData = serializeEncryptedData(encryptedData);
-        mockfs({
-          [inputPath]: serializedData.split("|").slice(0, 2).join("|"),
-        });
-        expect(() =>
+        await fs.writeFile(
+          inputPath,
+          serializedData.split("|").slice(0, 2).join("|"),
+        );
+        await expect(() =>
           validate(face.schema, { input: inputPath }),
         ).rejects.toThrow("No auth tag on decryption.");
       });
@@ -119,13 +117,14 @@ describe("validation", () => {
           "input to encrypt",
           generatePair().publicKey,
         );
-        mockfs({
-          [inputPath]: serializeEncryptedData({
+        await fs.writeFile(
+          inputPath,
+          serializeEncryptedData({
             ...encryptedData,
             authTag: `${encryptedData.authTag.slice(0, -10)}malformed`,
           }),
-        });
-        expect(() =>
+        );
+        await expect(() =>
           validate(face.schema, { input: inputPath }),
         ).rejects.toThrow("Auth tag has to have length of 24 bytes.");
       });
@@ -137,10 +136,11 @@ describe("validation", () => {
           generatePair().publicKey,
         );
         const serializedData = serializeEncryptedData(encryptedData);
-        mockfs({
-          [inputPath]: serializedData.split("|").slice(0, 3).join("|"),
-        });
-        expect(() =>
+        await fs.writeFile(
+          inputPath,
+          serializedData.split("|").slice(0, 3).join("|"),
+        );
+        await expect(() =>
           validate(face.schema, { input: inputPath }),
         ).rejects.toThrow("No RSA encrypted key on decryption.");
       });
@@ -151,13 +151,14 @@ describe("validation", () => {
           "input to encrypt",
           generatePair().publicKey,
         );
-        mockfs({
-          [inputPath]: serializeEncryptedData({
+        await fs.writeFile(
+          inputPath,
+          serializeEncryptedData({
             ...encryptedData,
             encryptedAesKey: `${encryptedData.encryptedAesKey.slice(0, -10)}malformed`,
           }),
-        });
-        expect(() =>
+        );
+        await expect(() =>
           validate(face.schema, { input: inputPath }),
         ).rejects.toThrow("Encrypted AES key has to have length of 344 bytes.");
       });
@@ -169,10 +170,11 @@ describe("validation", () => {
           generatePair().publicKey,
         );
         const serializedData = serializeEncryptedData(encryptedData);
-        mockfs({
-          [inputPath]: serializedData.split("|").slice(0, 4).join("|"),
-        });
-        expect(() =>
+        await fs.writeFile(
+          inputPath,
+          serializedData.split("|").slice(0, 4).join("|"),
+        );
+        await expect(() =>
           validate(face.schema, { input: inputPath }),
         ).rejects.toThrow("No text to decrypt on decryption.");
       });
@@ -184,10 +186,11 @@ describe("validation", () => {
           generatePair().publicKey,
         );
         const serializedData = serializeEncryptedData(encryptedData);
-        mockfs({
-          [inputPath]: [...serializedData.split("|"), "extra"].join("|"),
-        });
-        expect(() =>
+        await fs.writeFile(
+          inputPath,
+          [...serializedData.split("|"), "extra"].join("|"),
+        );
+        await expect(() =>
           validate(face.schema, { input: inputPath }),
         ).rejects.toThrow("Extra data on decryption.");
       });
@@ -198,7 +201,7 @@ describe("validation", () => {
     const inputPath = "path/to/input.txt";
     const inputToDecrypt = "input to encrypt";
     const encryptedData = encryptText(inputToDecrypt, generatePair().publicKey);
-    mockfs({ [inputPath]: serializeEncryptedData(encryptedData) });
+    await fs.writeFile(inputPath, serializeEncryptedData(encryptedData));
     const props = await validate(face.schema, { input: inputPath });
     expect(props).toEqual<typeof props>({ encryptedData });
   });

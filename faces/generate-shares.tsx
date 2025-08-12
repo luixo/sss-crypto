@@ -1,5 +1,5 @@
 import * as React from "react";
-import * as fs from "node:fs/promises";
+import fs from "node:fs/promises";
 import { Text, Box, Newline } from "ink";
 
 import z from "zod";
