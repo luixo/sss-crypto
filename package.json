@@ -19,14 +19,13 @@
     "cmd-ts": "patch:cmd-ts@npm%3A0.13.0#~/patches/cmd-ts-npm-0.13.0.patch"
   },
   "dependencies": {
-    "chalk": "^5.2.0",
+    "chalk": "^5.5.0",
     "cmd-ts": "^0.13.0",
     "ink": "4.4.0",
-    "prettier": "^3.2.5",
+    "prettier": "^3.6.2",
     "react": "~18.2.0",
     "secrets.js": "git+https://git@github.com/grempe/secrets.js.git",
     "tsx": "^4.20.3",
-    "valibot": "^0.29.0",
     "zod": "^4.0.17"
   },
   "devDependencies": {
@@ -45,7 +44,7 @@
     "eslint-plugin-react-hooks": "^4.6.0",
     "eslint-plugin-vitest": "^0.3.26",
     "ink-testing-library": "^4.0.0",
-    "lint-staged": "^15.2.2",
+    "lint-staged": "^16.1.5",
     "memfs": "^4.36.0",
     "pre-commit": "^1.2.2",
     "strip-ansi": "^7.1.0",
