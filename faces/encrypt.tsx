@@ -2,15 +2,12 @@ import * as React from "react";
 import { Text, Box, Newline } from "ink";
 
 import { KeyObject } from "crypto";
-import {
-  encryptText,
-  parsePublicKey,
-  serializeEncryptedData,
-} from "../utils/crypto";
-import { readFileSafe } from "../utils/fs";
+import z from "zod";
+import { encryptText, serializeEncryptedData } from "../utils/crypto";
 import { Face } from "./types";
 import { useKeepAlive } from "../hooks/use-keep-alive";
 import { Input } from "../components/input";
+import { existingFileSchema, publicKeyTransform } from "../utils/schemas";
 
 const START_TEMPLATE = "<%";
 const END_TEMPLATE = "%>";
@@ -225,31 +222,16 @@ const Encrypt: React.FC<Props> = ({ input: initialInput, publicKey }) => {
   }
 };
 
-export const face: Face<Props, [Partial<Record<string, string>>]> = {
+const schema = z
+  .object({
+    pub: existingFileSchema.transform(publicKeyTransform),
+    input: existingFileSchema
+      .optional()
+      .transform((input) => input?.toString() ?? ""),
+  })
+  .transform(({ input, pub }) => ({ input, publicKey: pub }));
+
+export const face: Face<Props, z.input<typeof schema>> = {
   Component: Encrypt,
-  validator: async (options) => {
-    const publicKey = await readFileSafe(
-      options.pub as string,
-      () => `Public key at "${options.pub}"`,
-    );
-    const input = options.input
-      ? (
-          await readFileSafe(options.input, () => `Input at "${options.input}"`)
-        ).toString()
-      : "";
-    try {
-      return { publicKey: parsePublicKey(publicKey), input };
-    } catch (e) {
-      if (
-        typeof e === "object" &&
-        e &&
-        "code" in e &&
-        e.code === "ERR_OSSL_UNSUPPORTED"
-      ) {
-        throw new Error("Can't read public key, probably data is corrupted.");
-        /* c8 ignore next 3 */
-      }
-      throw e;
-    }
-  },
+  schema,
 };

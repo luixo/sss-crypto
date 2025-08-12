@@ -17,31 +17,26 @@ import { sequence } from "../utils/promise";
 import { pickRandom } from "../utils/array";
 import { SHARE_LENGTH } from "../utils/consts";
 import { privateKeyToShares } from "../utils/converters";
+import { validate } from "../utils/validation";
 
 afterEach(() => {
   mockfs.restore();
 });
 
 describe("validation", () => {
-  test("input is empty", async () => {
-    expect(() => face.validator({})).rejects.toThrow(
-      "Input should not be empty to decrypt.",
-    );
-  });
-
   describe("input file", () => {
     test("file does not exist", async () => {
       mockfs({});
-      expect(() => face.validator({ input: "non-existent" })).rejects.toThrow(
-        'Input at "non-existent" does not exist.',
-      );
+      expect(() =>
+        validate(face.schema, { input: "non-existent" }),
+      ).rejects.toThrow('At "input": Path "non-existent" does not exist.');
     });
 
     test("target is a directory", async () => {
       const dirPath = "path/to/dir";
       mockfs({ [dirPath]: {} });
-      expect(() => face.validator({ input: dirPath })).rejects.toThrow(
-        'Input at "path/to/dir" is not a file.',
+      expect(() => validate(face.schema, { input: dirPath })).rejects.toThrow(
+        'At "input": File "path/to/dir" is not a file.',
       );
     });
 
@@ -49,7 +44,9 @@ describe("validation", () => {
       test("no branding tag", async () => {
         const inputPath = "path/to/input.txt";
         mockfs({ [inputPath]: "x" });
-        expect(() => face.validator({ input: inputPath })).rejects.toThrow(
+        expect(() =>
+          validate(face.schema, { input: inputPath }),
+        ).rejects.toThrow(
           `Data is invalid, expected data with "sss-enc" prefix.`,
         );
       });
@@ -62,7 +59,9 @@ describe("validation", () => {
         );
         const serializedData = serializeEncryptedData(encryptedData);
         mockfs({ [inputPath]: serializedData.slice(1) });
-        expect(() => face.validator({ input: inputPath })).rejects.toThrow(
+        expect(() =>
+          validate(face.schema, { input: inputPath }),
+        ).rejects.toThrow(
           `Data is invalid, expected data with "sss-enc" prefix.`,
         );
       });
@@ -77,9 +76,9 @@ describe("validation", () => {
         mockfs({
           [inputPath]: serializedData.split("|").slice(0, 1).join("|"),
         });
-        expect(() => face.validator({ input: inputPath })).rejects.toThrow(
-          "No initial vector on decryption.",
-        );
+        expect(() =>
+          validate(face.schema, { input: inputPath }),
+        ).rejects.toThrow("No initial vector on decryption.");
       });
 
       test("invalid initial vector length", async () => {
@@ -94,9 +93,9 @@ describe("validation", () => {
             initVector: `${encryptedData.initVector.slice(0, -10)}malformed`,
           }),
         });
-        expect(() => face.validator({ input: inputPath })).rejects.toThrow(
-          "Initial vector has to have length of 24 bytes.",
-        );
+        expect(() =>
+          validate(face.schema, { input: inputPath }),
+        ).rejects.toThrow("Initial vector has to have length of 24 bytes.");
       });
 
       test("no auth tag", async () => {
@@ -109,9 +108,9 @@ describe("validation", () => {
         mockfs({
           [inputPath]: serializedData.split("|").slice(0, 2).join("|"),
         });
-        expect(() => face.validator({ input: inputPath })).rejects.toThrow(
-          "No auth tag on decryption.",
-        );
+        expect(() =>
+          validate(face.schema, { input: inputPath }),
+        ).rejects.toThrow("No auth tag on decryption.");
       });
 
       test("invalid auth tag length", async () => {
@@ -126,9 +125,9 @@ describe("validation", () => {
             authTag: `${encryptedData.authTag.slice(0, -10)}malformed`,
           }),
         });
-        expect(() => face.validator({ input: inputPath })).rejects.toThrow(
-          "Auth tag has to have length of 24 bytes.",
-        );
+        expect(() =>
+          validate(face.schema, { input: inputPath }),
+        ).rejects.toThrow("Auth tag has to have length of 24 bytes.");
       });
 
       test("no symmetric key", async () => {
@@ -141,9 +140,9 @@ describe("validation", () => {
         mockfs({
           [inputPath]: serializedData.split("|").slice(0, 3).join("|"),
         });
-        expect(() => face.validator({ input: inputPath })).rejects.toThrow(
-          "No RSA encrypted key on decryption.",
-        );
+        expect(() =>
+          validate(face.schema, { input: inputPath }),
+        ).rejects.toThrow("No RSA encrypted key on decryption.");
       });
 
       test("invalid symmetric key", async () => {
@@ -158,9 +157,9 @@ describe("validation", () => {
             encryptedAesKey: `${encryptedData.encryptedAesKey.slice(0, -10)}malformed`,
           }),
         });
-        expect(() => face.validator({ input: inputPath })).rejects.toThrow(
-          "Encrypted AES key has to have length of 344 bytes.",
-        );
+        expect(() =>
+          validate(face.schema, { input: inputPath }),
+        ).rejects.toThrow("Encrypted AES key has to have length of 344 bytes.");
       });
 
       test("no encrypted text", async () => {
@@ -173,9 +172,9 @@ describe("validation", () => {
         mockfs({
           [inputPath]: serializedData.split("|").slice(0, 4).join("|"),
         });
-        expect(() => face.validator({ input: inputPath })).rejects.toThrow(
-          "No text to decrypt on decryption.",
-        );
+        expect(() =>
+          validate(face.schema, { input: inputPath }),
+        ).rejects.toThrow("No text to decrypt on decryption.");
       });
 
       test("extra data after delimiter", async () => {
@@ -188,9 +187,9 @@ describe("validation", () => {
         mockfs({
           [inputPath]: [...serializedData.split("|"), "extra"].join("|"),
         });
-        expect(() => face.validator({ input: inputPath })).rejects.toThrow(
-          "Extra data on decryption.",
-        );
+        expect(() =>
+          validate(face.schema, { input: inputPath }),
+        ).rejects.toThrow("Extra data on decryption.");
       });
     });
   });
@@ -200,10 +199,8 @@ describe("validation", () => {
     const inputToDecrypt = "input to encrypt";
     const encryptedData = encryptText(inputToDecrypt, generatePair().publicKey);
     mockfs({ [inputPath]: serializeEncryptedData(encryptedData) });
-    const props = await face.validator({ input: inputPath });
-    expect(props).toEqual<Awaited<ReturnType<(typeof face)["validator"]>>>({
-      encryptedData,
-    });
+    const props = await validate(face.schema, { input: inputPath });
+    expect(props).toEqual<typeof props>({ encryptedData });
   });
 });
 

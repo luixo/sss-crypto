@@ -1,0 +1,46 @@
+diff --git a/dist/cjs/subcommands.d.ts b/dist/cjs/subcommands.d.ts
+index c6bfce11c70b874e7349a1dcf95886e5ef578a7e..921421843769c58167f5ec6f5df6dbb6bcede4ed 100644
+--- a/dist/cjs/subcommands.d.ts
++++ b/dist/cjs/subcommands.d.ts
+@@ -21,5 +21,5 @@ export declare function subcommands<Commands extends Record<string, ArgParser<an
+     version?: string;
+     cmds: Commands;
+     description?: string;
+-}): ArgParser<Output<Commands>> & Named & Partial<Descriptive & Versioned> & Runner<Output<Commands>, RunnerOutput<Commands>>;
++}): ArgParser<Output<Commands>> & Named & Partial<Descriptive & Versioned> & Runner<Output<Commands>, RunnerOutput<Commands>> & {cmds: Commands};
+ export {};
+diff --git a/dist/cjs/subcommands.js b/dist/cjs/subcommands.js
+index b5c266a67f1beed552ff8d3cd41b20f4bc614d46..ca4612243b63df5027a42dd9687da41d52548eed 100644
+--- a/dist/cjs/subcommands.js
++++ b/dist/cjs/subcommands.js
+@@ -82,6 +82,7 @@ function subcommands(config) {
+         }
+     }
+     return {
++        cmds: config.cmds,
+         version: config.version,
+         description: config.description,
+         name: config.name,
+diff --git a/dist/esm/subcommands.d.ts b/dist/esm/subcommands.d.ts
+index c6bfce11c70b874e7349a1dcf95886e5ef578a7e..921421843769c58167f5ec6f5df6dbb6bcede4ed 100644
+--- a/dist/esm/subcommands.d.ts
++++ b/dist/esm/subcommands.d.ts
+@@ -21,5 +21,5 @@ export declare function subcommands<Commands extends Record<string, ArgParser<an
+     version?: string;
+     cmds: Commands;
+     description?: string;
+-}): ArgParser<Output<Commands>> & Named & Partial<Descriptive & Versioned> & Runner<Output<Commands>, RunnerOutput<Commands>>;
++}): ArgParser<Output<Commands>> & Named & Partial<Descriptive & Versioned> & Runner<Output<Commands>, RunnerOutput<Commands>> & {cmds: Commands};
+ export {};
+diff --git a/dist/esm/subcommands.js b/dist/esm/subcommands.js
+index 44e6c6fab629c17913256b789f51928a515dad88..36eaa9388f8903c6b7f19ccdaa1cdd5e5bfc0ce1 100644
+--- a/dist/esm/subcommands.js
++++ b/dist/esm/subcommands.js
+@@ -53,6 +53,7 @@ export function subcommands(config) {
+         }
+     }
+     return {
++        cmds: config.cmds,
+         version: config.version,
+         description: config.description,
+         name: config.name,

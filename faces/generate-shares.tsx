@@ -1,10 +1,8 @@
 import * as React from "react";
 import * as fs from "node:fs/promises";
-import * as path from "node:path";
 import { Text, Box, Newline } from "ink";
-import { number, coerce, safeParse, toMinValue } from "valibot";
 
-import { Stats } from "node:fs";
+import z from "zod";
 import { generatePair } from "../utils/crypto";
 import { SharesOptions } from "../utils/shares";
 import { keyToPem } from "../utils/encoding";
@@ -12,11 +10,12 @@ import { Face } from "./types";
 import { SaveDataWarning } from "../components/save-data-warning";
 import { Shares } from "../components/shares";
 import { privateKeyToShares } from "../utils/converters";
-
-const rootPath = path.resolve(
-  path.dirname(new URL(import.meta.url).pathname),
-  "..",
-);
+import {
+  localFileTransform,
+  notDirectoryTransform,
+  sharesSchema,
+  thresholdSchema,
+} from "../utils/schemas";
 
 type WriteFileStatus = "idle" | "loading" | "done";
 
@@ -91,62 +90,25 @@ const GenerateShares: React.FC<Props> = ({ pubKeyFilePath, ...props }) => {
   );
 };
 
-export const face: Face<Props, [Partial<Record<string, string>>]> = {
+const schema = z
+  .object({
+    threshold: thresholdSchema,
+    shares: sharesSchema,
+    pubOutput: z
+      .string()
+      .transform(localFileTransform)
+      .transform(notDirectoryTransform)
+      .optional(),
+  })
+  .refine(({ threshold, shares }) => shares > threshold, {
+    error: "'k' should be less than 'n'.",
+  })
+  .transform(({ pubOutput, ...rest }) => ({
+    ...rest,
+    pubKeyFilePath: pubOutput,
+  }));
+
+export const face: Face<Props, z.input<typeof schema>> = {
   Component: GenerateShares,
-  validator: async (options) => {
-    const thresholdParseResult = safeParse(
-      coerce(number([toMinValue(2)]), Number),
-      options.threshold,
-    );
-    if (!thresholdParseResult.success) {
-      throw new Error(
-        `Error parsing threshold value: ${thresholdParseResult.issues
-          .map(({ message }) => message)
-          .join("; ")}`,
-      );
-    }
-    const sharesParseResult = safeParse(
-      coerce(number([toMinValue(2)]), Number),
-      options.shares,
-    );
-    if (!sharesParseResult.success) {
-      throw new Error(
-        `Error parsing shares value: ${sharesParseResult.issues
-          .map(({ message }) => message)
-          .join("; ")}`,
-      );
-    }
-    if (thresholdParseResult.output >= sharesParseResult.output) {
-      throw new Error(
-        `Scheme ${thresholdParseResult.output} out of ${sharesParseResult.output} cannot be generated: "k" should be less than "n".`,
-      );
-    }
-    let pubKeyFilePath: string | undefined;
-    if (options.pubOutput) {
-      const relativePath = path.relative(
-        rootPath,
-        path.resolve(options.pubOutput),
-      );
-      if (relativePath.startsWith("..")) {
-        throw new Error(
-          "Public key only can be written in a current directory.",
-        );
-      }
-      let stats: Stats | undefined;
-      try {
-        stats = await fs.stat(relativePath);
-      } catch {
-        /* empty */
-      }
-      if (stats && stats.isDirectory()) {
-        throw new Error(`Public key path should not be a directory.`);
-      }
-      pubKeyFilePath = options.pubOutput;
-    }
-    return {
-      threshold: thresholdParseResult.output,
-      shares: sharesParseResult.output,
-      pubKeyFilePath,
-    };
-  },
+  schema,
 };

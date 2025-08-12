@@ -13,6 +13,7 @@ import {
   deserializeEncryptedData,
 } from "../utils/crypto";
 import { keyToPem } from "../utils/encoding";
+import { validate } from "../utils/validation";
 
 const padEndChalked = (
   text: string,
@@ -36,16 +37,16 @@ afterEach(() => {
 describe("validation", () => {
   describe("pub key file", () => {
     test("file does not exist", async () => {
-      expect(() => face.validator({ pub: "non-existent" })).rejects.toThrow(
-        'Public key at "non-existent" does not exist.',
-      );
+      expect(() =>
+        validate(face.schema, { pub: "non-existent" }),
+      ).rejects.toThrow('At "pub": Path "non-existent" does not exist.');
     });
 
     test("target is a directory", async () => {
       const dirPath = "path/to/dir";
       mockfs({ [dirPath]: {} });
-      expect(() => face.validator({ pub: dirPath })).rejects.toThrow(
-        'Public key at "path/to/dir" is not a file.',
+      expect(() => validate(face.schema, { pub: dirPath })).rejects.toThrow(
+        'At "pub": File "path/to/dir" is not a file.',
       );
     });
 
@@ -53,7 +54,7 @@ describe("validation", () => {
       const publicKeyData = "This is not a public key";
       const pubKeyPath = "path/to/pub.key";
       mockfs({ [pubKeyPath]: publicKeyData });
-      expect(() => face.validator({ pub: pubKeyPath })).rejects.toThrow(
+      expect(() => validate(face.schema, { pub: pubKeyPath })).rejects.toThrow(
         "Can't read public key, probably data is corrupted.",
       );
     });
@@ -64,8 +65,8 @@ describe("validation", () => {
       const pubKeyPath = "path/to/pub.key";
       mockfs({ [pubKeyPath]: "" });
       expect(() =>
-        face.validator({ pub: pubKeyPath, input: "non-existent" }),
-      ).rejects.toThrow('Input at "non-existent" does not exist.');
+        validate(face.schema, { pub: pubKeyPath, input: "non-existent" }),
+      ).rejects.toThrow('At "input": Path "non-existent" does not exist.');
     });
 
     test("target is a directory", async () => {
@@ -73,8 +74,8 @@ describe("validation", () => {
       const dirPath = "path/to/dir";
       mockfs({ [pubKeyPath]: "", [dirPath]: {} });
       expect(() =>
-        face.validator({ pub: pubKeyPath, input: dirPath }),
-      ).rejects.toThrow('Input at "path/to/dir" is not a file.');
+        validate(face.schema, { pub: pubKeyPath, input: dirPath }),
+      ).rejects.toThrow('At "input": File "path/to/dir" is not a file.');
     });
   });
 
@@ -84,7 +85,7 @@ describe("validation", () => {
     const inputPath = "path/to/input.txt";
     const inputToEncrypt = "input to encrypt";
     mockfs({ [pubKeyPath]: keyToPem(publicKey), [inputPath]: inputToEncrypt });
-    const { publicKey: parsedPublicKey, input } = await face.validator({
+    const { publicKey: parsedPublicKey, input } = await validate(face.schema, {
       pub: pubKeyPath,
       input: inputPath,
     });

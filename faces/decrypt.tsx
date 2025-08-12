@@ -1,5 +1,6 @@
 import * as React from "react";
 import { Text, Box, Newline } from "ink";
+import z from "zod";
 import { ShareObject } from "../utils/shares";
 import {
   EncryptedData,
@@ -7,11 +8,11 @@ import {
   deserializeEncryptedData,
 } from "../utils/crypto";
 import { Face } from "./types";
-import { readFileSafe } from "../utils/fs";
 import { useKeepAlive } from "../hooks/use-keep-alive";
 import { SharesInput } from "../components/shares-input";
 import { useResetKey } from "../hooks/use-reset-key";
 import { sharesToPrivateKey } from "../utils/converters";
+import { existingFileSchema } from "../utils/schemas";
 
 const getDecryptedText = (
   encryptedData: EncryptedData,
@@ -110,17 +111,28 @@ const Decrypt: React.FC<Props> = ({ encryptedData }) => {
   }
 };
 
-export const face: Face<Props, [Partial<Record<string, string>>]> = {
+const schema = z
+  .object({
+    input: existingFileSchema
+      .refine((input) => input.length > 0, {
+        error: "Input should not be empty to decrypt.",
+      })
+      .transform((input, ctx) => {
+        try {
+          return deserializeEncryptedData(input.toString());
+        } catch (e) {
+          ctx.issues.push({
+            code: "custom",
+            message: String(e),
+            input,
+          });
+          return z.NEVER;
+        }
+      }),
+  })
+  .transform(({ input }) => ({ encryptedData: input }));
+
+export const face: Face<Props, z.input<typeof schema>> = {
   Component: Decrypt,
-  validator: async (options) => {
-    const input = options.input
-      ? (
-          await readFileSafe(options.input, () => `Input at "${options.input}"`)
-        ).toString()
-      : "";
-    if (!input || input.length === 0) {
-      throw new Error("Input should not be empty to decrypt.");
-    }
-    return { encryptedData: deserializeEncryptedData(input) };
-  },
+  schema,
 };

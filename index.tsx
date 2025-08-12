@@ -1,66 +1,131 @@
 import React from "react";
-import { Command } from "commander";
 import { render } from "ink";
 
+import { command, option, run, subcommands, Type } from "cmd-ts";
+import type { StandardSchemaV1 } from "@standard-schema/spec";
 import { face as generateSharesFace } from "./faces/generate-shares";
 import { face as encryptFace } from "./faces/encrypt";
 import { face as decryptFace } from "./faces/decrypt";
 import { face as addShareFace } from "./faces/add-share";
 import { Face } from "./faces/types";
+import { validate } from "./utils/validation";
+
+import {
+  fileSchema,
+  newSharesAmountSchema,
+  sharesSchema,
+  thresholdSchema,
+} from "./utils/schemas";
+
+const stdType = <S extends StandardSchemaV1>(
+  schema: S,
+  displayName: string,
+): Type<string, StandardSchemaV1.InferOutput<S>> => ({
+  displayName,
+  description: "validated via Standard Schema",
+  from: (input) => validate(schema, input),
+});
 
 export const createProgram = () => {
-  const program = new Command();
-
   const handleFace =
-    <P extends object, I extends unknown[]>(face: Face<P, I>) =>
-    async (...input: I) => {
-      try {
-        const props = await face.validator(...input);
-        const instance = render(<face.Component {...props} />);
-        await instance.waitUntilExit();
-      } catch (e) {
-        program.error(String(e));
-      }
+    <P extends object, I extends object>(face: Face<P, I>) =>
+    async (input: I) => {
+      const props = await validate(face.schema, input);
+      const instance = render(<face.Component {...props} />);
+      return instance.waitUntilExit();
     };
 
-  program
-    .command("generate-shares")
-    .description("Generate n out of k keys via Shamir's secret sharing scheme")
-    .requiredOption(
-      "-k, --threshold <amount>",
-      "threshold of shared parts required to be combined to a key",
-    )
-    .requiredOption("-n, --shares <amount>", "total amount of shared parts")
-    .option("-p --pubOutput <filename>", "output filename for a public key")
-    .action((options) => handleFace(generateSharesFace)(options));
+  const generateSharesCommand = command({
+    name: "generate-shares",
+    description: "Generate n out of k keys via Shamir's secret sharing scheme",
+    args: {
+      threshold: option({
+        long: "threshold",
+        short: "k",
+        description:
+          "threshold of shared parts required to be combined to a key",
+        type: stdType(thresholdSchema, "threshold"),
+      }),
+      shares: option({
+        long: "shares",
+        short: "n",
+        description: "total amount of shared parts",
+        type: stdType(sharesSchema, "shares"),
+      }),
+      pubOutput: option({
+        long: "pubOutput",
+        short: "p",
+        description: "output filename for a public key",
+        type: stdType(fileSchema.optional(), "pubOutput"),
+        defaultValue: () => undefined,
+      }),
+    },
+    handler: handleFace(generateSharesFace),
+  });
 
-  program
-    .command("decrypt")
-    .description("Decrypt a message with k out of n shares")
-    .option("-i, --input <text>", "path to a file to decrypt")
-    .action((options) => handleFace(decryptFace)(options));
+  const decryptCommand = command({
+    name: "decrypt",
+    description: "Decrypt a message with k out of n shares",
+    args: {
+      input: option({
+        long: "input",
+        short: "i",
+        description: "path to a file to decrypt",
+        type: stdType(fileSchema, "input"),
+      }),
+    },
+    handler: handleFace(decryptFace),
+  });
 
-  program
-    .command("add-share")
-    .description("Add a new share")
-    .option("-n, --amount <amount>", "amount of newly added shares")
-    .action((options) => handleFace(addShareFace)(options));
+  const addShareCommand = command({
+    name: "add-share",
+    description: "Add a new share",
+    args: {
+      amount: option({
+        long: "amount",
+        short: "n",
+        description: "amount of newly added shares",
+        type: stdType(newSharesAmountSchema.optional(), "amount"),
+        defaultValue: () => 1,
+      }),
+    },
+    handler: handleFace(addShareFace),
+  });
 
-  program
-    .command("encrypt")
-    .description("Encrypt a message with a given public key")
-    .requiredOption(
-      "-p, --pub <pubkey>",
-      "path to a pub key to encrypt text with",
-      "pub.key",
-    )
-    .option("-i, --input <text>", "path to a file to encrypt")
-    .action(async (options) => handleFace(encryptFace)(options));
+  const encryptCommand = command({
+    name: "encrypt",
+    description: "Encrypt a message with a given public key",
+    args: {
+      pub: option({
+        long: "pub",
+        short: "p",
+        description: "path to a file to encrypt",
+        type: stdType(fileSchema.optional().default("pub.key"), "pubKey"),
+        defaultValue: () => "pub.key",
+      }),
+      input: option({
+        long: "input",
+        short: "i",
+        description: "path to a file to encrypt",
+        type: stdType(fileSchema.optional(), "input"),
+        defaultValue: () => undefined,
+      }),
+    },
+    handler: handleFace(encryptFace),
+  });
 
-  return program;
+  return subcommands({
+    name: "sss-cli",
+    cmds: {
+      "generate-shares": generateSharesCommand,
+      decrypt: decryptCommand,
+      "add-share": addShareCommand,
+      encrypt: encryptCommand,
+    },
+  });
 };
 
 /* c8 ignore next 3 */
 if (process.env.NODE_ENV !== "test") {
-  createProgram().parse();
+  run(createProgram(), process.argv.slice(2));
 }

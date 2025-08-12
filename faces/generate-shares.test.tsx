@@ -15,6 +15,7 @@ import {
   SHARE_PREFIX_LENGTH,
 } from "../utils/consts";
 import { sharesToPrivateKey } from "../utils/converters";
+import { validate } from "../utils/validation";
 
 afterEach(() => {
   mockfs.restore();
@@ -30,16 +31,13 @@ const getWithValid = (override: Partial<Record<string, string>>) => ({
 describe("validation", () => {
   test("threshold", async () => {
     await expect(() =>
-      face.validator(getWithValid({ threshold: "a" })),
+      validate(face.schema, getWithValid({ threshold: "a" })),
     ).rejects.toThrow(
-      "Error parsing threshold value: Invalid type: Expected number but received NaN",
+      'At "threshold": Invalid input: expected number, received NaN',
     );
-    expect(await face.validator(getWithValid({ threshold: "1" }))).toEqual({
-      threshold: 2,
-      shares: 10,
-      pubKeyFilePath: "pub.key",
-    });
-    expect(await face.validator(getWithValid({ threshold: "2" }))).toEqual({
+    expect(
+      await validate(face.schema, getWithValid({ threshold: "2" })),
+    ).toEqual({
       threshold: 2,
       shares: 10,
       pubKeyFilePath: "pub.key",
@@ -48,21 +46,14 @@ describe("validation", () => {
 
   test("shares", async () => {
     await expect(() =>
-      face.validator(getWithValid({ shares: "a" })),
+      validate(face.schema, getWithValid({ shares: "a" })),
     ).rejects.toThrow(
-      "Error parsing shares value: Invalid type: Expected number but received NaN",
+      'At "shares": Invalid input: expected number, received NaN',
     );
     await expect(() =>
-      face.validator(getWithValid({ shares: "1" })),
-    ).rejects.toThrow(
-      'Scheme 2 out of 2 cannot be generated: "k" should be less than "n"',
-    );
-    await expect(() =>
-      face.validator(getWithValid({ threshold: "3", shares: "3" })),
-    ).rejects.toThrow(
-      'Scheme 3 out of 3 cannot be generated: "k" should be less than "n"',
-    );
-    expect(await face.validator(getWithValid({ shares: "3" }))).toEqual({
+      validate(face.schema, getWithValid({ threshold: "3", shares: "3" })),
+    ).rejects.toThrow(`At "<root>": 'k' should be less than 'n'.`);
+    expect(await validate(face.schema, getWithValid({ shares: "3" }))).toEqual({
       threshold: 2,
       shares: 3,
       pubKeyFilePath: "pub.key",
@@ -73,17 +64,17 @@ describe("validation", () => {
     const dirPath = "path/to/dir";
     mockfs({ [dirPath]: {} });
     await expect(() =>
-      face.validator(getWithValid({ pubOutput: dirPath })),
+      validate(face.schema, getWithValid({ pubOutput: dirPath })),
     ).rejects.toThrow("Public key path should not be a directory.");
     const outsideDirPath = "../foo.key";
     await expect(() =>
-      face.validator(getWithValid({ pubOutput: outsideDirPath })),
+      validate(face.schema, getWithValid({ pubOutput: outsideDirPath })),
     ).rejects.toThrow("Public key only can be written in a current directory.");
     expect(
-      await face.validator(getWithValid({ pubOutput: "pub.key" })),
+      await validate(face.schema, getWithValid({ pubOutput: "pub.key" })),
     ).toEqual({ threshold: 2, shares: 10, pubKeyFilePath: "pub.key" });
     expect(
-      await face.validator(getWithValid({ pubOutput: undefined })),
+      await validate(face.schema, getWithValid({ pubOutput: undefined })),
     ).toEqual({ threshold: 2, shares: 10, pubKeyFilePath: undefined });
   });
 });

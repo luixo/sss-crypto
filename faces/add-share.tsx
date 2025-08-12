@@ -1,5 +1,6 @@
 import * as React from "react";
 import { Text, Box, Newline } from "ink";
+import z from "zod";
 import { ShareObject, addShare } from "../utils/shares";
 import { Face } from "./types";
 import { useKeepAlive } from "../hooks/use-keep-alive";
@@ -8,6 +9,7 @@ import { SaveDataWarning } from "../components/save-data-warning";
 import { Share } from "../components/shares";
 import { useResetKey } from "../hooks/use-reset-key";
 import { sharesToPrivateKey } from "../utils/converters";
+import { newSharesAmountSchema } from "../utils/schemas";
 
 const getNewShare = (shares: ShareObject[]): ShareObject => {
   // We need to verify it's a proper private key
@@ -75,8 +77,11 @@ const AddShare: React.FC = () => {
   }
 };
 
-export const face: Face<object, [Partial<Record<string, string>>]> = {
+const schema = z.object({
+  amount: newSharesAmountSchema,
+});
+
+export const face: Face<object, z.input<typeof schema>> = {
   Component: AddShare,
-  /* c8 ignore next */
-  validator: () => ({}),
+  schema,
 };
