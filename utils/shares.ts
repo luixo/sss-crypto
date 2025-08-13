@@ -6,7 +6,7 @@ import { validate } from "./validation";
 
 const serializedShareSchema = z
   .string()
-  .regex(/^\d+\|\d+\|\d+\|[a-zA-Z0-9+=/]*$/, {
+  .regex(/^\d+\|\d+\|[0-9a-f]+\|[a-zA-Z0-9+=/]*$/, {
     error: "Share format is incorrect",
   });
 const shareObjectSchema = z

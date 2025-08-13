@@ -16,6 +16,8 @@ import {
 import { sharesToPrivateKey } from "../utils/converters";
 import { validate } from "../utils/validation";
 
+type Props = React.ComponentProps<(typeof face)["Component"]>;
+
 const getWithValid = (override: Partial<Record<string, string>> = {}) => ({
   threshold: "2",
   shares: "10",
@@ -30,9 +32,7 @@ describe("validation", () => {
     ).rejects.toThrow(
       'At "threshold": Invalid input: expected number, received NaN',
     );
-    expect(
-      await validate(face.schema, getWithValid({ threshold: "2" })),
-    ).toEqual({
+    expect(await validate(face.schema, getWithValid())).toEqual<Props>({
       threshold: 2,
       shares: 10,
       pubKeyFilePath: "pub.key",
@@ -47,8 +47,10 @@ describe("validation", () => {
     );
     await expect(() =>
       validate(face.schema, getWithValid({ threshold: "3", shares: "3" })),
-    ).rejects.toThrow(`At "<root>": 'k' should be less than 'n'.`);
-    expect(await validate(face.schema, getWithValid({ shares: "3" }))).toEqual({
+    ).rejects.toThrow(`At "<root>": 'k' should be less than 'n'`);
+    expect(
+      await validate(face.schema, getWithValid({ shares: "3" })),
+    ).toEqual<Props>({
       threshold: 2,
       shares: 3,
       pubKeyFilePath: "pub.key",
@@ -68,10 +70,18 @@ describe("validation", () => {
     await fs.writeFile("pub2.key", "output");
     expect(
       await validate(face.schema, getWithValid({ pubOutput: "pub2.key" })),
-    ).toEqual({ threshold: 2, shares: 10, pubKeyFilePath: "pub2.key" });
+    ).toEqual<Props>({
+      threshold: 2,
+      shares: 10,
+      pubKeyFilePath: "pub2.key",
+    });
     expect(
       await validate(face.schema, getWithValid({ pubOutput: undefined })),
-    ).toEqual({ threshold: 2, shares: 10, pubKeyFilePath: undefined });
+    ).toEqual<Props>({
+      threshold: 2,
+      shares: 10,
+      pubKeyFilePath: undefined,
+    });
   });
 });
 

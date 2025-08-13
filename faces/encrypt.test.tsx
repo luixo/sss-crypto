@@ -100,21 +100,19 @@ describe("encryption", () => {
     const { lastFrameLines, stdin } = await render(
       <face.Component publicKey={publicKey} />,
     );
-    await expect
-      .poll(lastFrameLines)
-      .toEqual(["Please input text to encrypt:", chalk.red("(no input)")]);
+
+    const expectLastLine = (lastLine: string) =>
+      expect
+        .poll(lastFrameLines)
+        .toEqual(["Please input text to encrypt:", lastLine]);
+
+    await expectLastLine(chalk.red("(no input)"));
     await stdin.write("1");
-    await expect
-      .poll(lastFrameLines)
-      .toEqual(["Please input text to encrypt:", chalk.green("1")]);
+    await expectLastLine(chalk.green("1"));
     await stdin.write("11");
-    await expect
-      .poll(lastFrameLines)
-      .toEqual(["Please input text to encrypt:", chalk.green("111")]);
+    await expectLastLine(chalk.green("111"));
     await stdin.backspace();
-    await expect
-      .poll(lastFrameLines)
-      .toEqual(["Please input text to encrypt:", chalk.green("11")]);
+    await expectLastLine(chalk.green("11"));
   });
 
   describe("text is encrypted", () => {

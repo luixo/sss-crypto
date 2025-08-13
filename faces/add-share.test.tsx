@@ -22,7 +22,7 @@ describe("add share", () => {
       }).map((share) => serializeShare(share).replace("|", ""));
 
       const { lastFrameLines, stdin } = await render(<face.Component />);
-      stdin.writeLn(privateKeyShares[0]);
+      await stdin.writeLn(privateKeyShares[0]);
       await expect
         .poll(lastFrameLines)
         .toEqual([
