@@ -169,11 +169,13 @@ describe("encryption", () => {
         .poll(lastFrameLines)
         .toEqual(["Please input text to encrypt:", chalk.red("(no input)")]);
       await stdin.writeLn(textToEncrypt);
-      const [, ...encryptedText] = lastFrameLines();
-      const encryptedData = deserializeEncryptedData(encryptedText.join(""));
+      await stdin.enter();
       await expect
-        .poll(lastFrameLines)
-        .toEqual(["Encryption result:", ...encryptedText]);
+        .poll(() => lastFrameLines().at(0))
+        .toEqual("Encryption result:");
+      const encryptedData = deserializeEncryptedData(
+        lastFrameLines().slice(1).join(""),
+      );
       expect(decryptText(encryptedData, privateKey)).toEqual(textToEncrypt);
     });
   });

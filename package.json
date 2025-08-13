@@ -21,9 +21,9 @@
   "dependencies": {
     "chalk": "^5.5.0",
     "cmd-ts": "^0.13.0",
-    "ink": "4.4.0",
+    "ink": "^6.1.0",
     "prettier": "^3.6.2",
-    "react": "~18.2.0",
+    "react": "^19.1.1",
     "secrets.js": "git+https://git@github.com/grempe/secrets.js.git",
     "tsx": "^4.20.3",
     "zod": "^4.0.17"
@@ -32,7 +32,7 @@
     "@standard-schema/spec": "^1.0.0",
     "@types/eslint": "^8",
     "@types/node": "^24.2.1",
-    "@types/react": "^18.2.61",
+    "@types/react": "^19.1.9",
     "@typescript-eslint/eslint-plugin": "^7.2.0",
     "@typescript-eslint/parser": "^7.2.0",
     "@vitest/coverage-v8": "^3.2.4",

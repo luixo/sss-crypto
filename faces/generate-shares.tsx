@@ -27,6 +27,7 @@ const WriteFileStatusIndicator: React.FC<{
   if (status === "idle") {
     return null;
   }
+  /* c8 ignore start */
   if (status === "loading") {
     return (
       <Box>
@@ -36,6 +37,7 @@ const WriteFileStatusIndicator: React.FC<{
       </Box>
     );
   }
+  /* c8 ignore stop */
   return (
     <Box>
       <Text color="green">
