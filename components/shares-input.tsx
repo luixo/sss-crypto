@@ -13,8 +13,8 @@ export const SharesInput: React.FC<Props> = ({ onDone, onError }) => {
   const [threshold, setThreshold] = React.useState<number | undefined>();
   const [shares, setShares] = React.useState<ShareObject[]>([]);
   const onShareInput = React.useCallback(
-    (input: string) => {
-      const share = deserializeShare(input);
+    async (input: string) => {
+      const share = await deserializeShare(input);
       if (threshold && threshold !== share.threshold) {
         onError(
           `Expected all shares to have the same threshold, got ${threshold} and ${share.threshold}`,
@@ -48,17 +48,7 @@ export const SharesInput: React.FC<Props> = ({ onDone, onError }) => {
         <HiddenInput
           key={shares.length}
           onDone={onShareInput}
-          validator={React.useCallback((input: string) => {
-            try {
-              if ((input.match(/\|/g) || []).length !== 3) {
-                throw new Error("Share format is incorrect");
-              }
-              const result = deserializeShare(input);
-              return { success: true as const, result };
-            } catch (e) {
-              return { success: false as const, error: String(e) };
-            }
-          }, [])}
+          validator={deserializeShare}
         />
       </Text>
     </Box>

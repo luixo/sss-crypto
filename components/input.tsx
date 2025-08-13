@@ -1,11 +1,12 @@
-import { Text, useInput } from "ink";
+import { Key, Text, useInput } from "ink";
 import * as React from "react";
 
 export type Props = {
   initialValue?: string;
   onArrow?: (type: "left" | "right", text: string) => void;
   onEnter?: (text: string) => void;
-  onKeystroke?: (stroke: string) => void;
+  onBackspace?: (text: string) => void;
+  onKeystroke?: (stroke: string, key: Key) => void;
   formatValue?: (value: string) => string;
   parseInput?: (value: string) => string;
 };
@@ -22,6 +23,7 @@ export const Input: React.FC<Props> = ({
 }) => {
   const [input, setInput] = React.useState(() => initialValue);
   useInput((value, key) => {
+    onKeystroke?.(value, key);
     if (key.leftArrow || key.rightArrow) {
       onArrow?.(key.leftArrow ? "left" : "right", input);
     } else if (key.return) {
@@ -31,7 +33,6 @@ export const Input: React.FC<Props> = ({
     } else {
       setInput((prevInput) => parseInput(prevInput + value));
     }
-    onKeystroke?.(value);
   });
   if (input.length === 0) {
     return <Text color="red">(no input)</Text>;

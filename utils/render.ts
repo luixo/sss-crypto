@@ -1,8 +1,5 @@
 import { render as originalRender } from "ink-testing-library";
-import { expect } from "vitest";
-import { KeyObject } from "crypto";
 import { nextTick as rawNextTick } from "node:process";
-import { decryptText, deserializeEncryptedData } from "./crypto";
 
 const nextTick = () =>
   new Promise((resolve) => {
@@ -10,29 +7,21 @@ const nextTick = () =>
     setTimeout(() => rawNextTick(resolve), 10);
   });
 
-type ModifiedStdin = {
-  write: (data: string) => Promise<void>;
-  writeLn: (data: string) => Promise<void>;
-  enter: () => Promise<void>;
-  backspace: (amount?: number) => Promise<void>;
-  leftArrow: () => Promise<void>;
-  rightArrow: () => Promise<void>;
-};
-type ExtendedRender = {
-  stdin: ModifiedStdin;
-  expectOutput: (...expected: (string | null)[]) => void;
-  expectEncrypted: (opts: {
-    privateKey: KeyObject;
-    getEncrypted: (actual: string[]) => string;
-    expected: string;
-  }) => void;
-};
+type RenderControls = {
+  stdin: {
+    write: (data: string) => Promise<void>;
+    writeLn: (data: string) => Promise<void>;
+    enter: () => Promise<void>;
+    backspace: (amount?: number) => Promise<void>;
+    leftArrow: () => Promise<void>;
+    rightArrow: () => Promise<void>;
+  };
+  lastFrameLines: (delimiter?: string) => string[];
+} & Pick<ReturnType<typeof originalRender>, "stdout">;
 export const render = async (
   ...args: Parameters<typeof originalRender>
-): Promise<
-  Omit<ReturnType<typeof originalRender>, "stdin"> & ExtendedRender
-> => {
-  const { stdin: originalStdin, ...rest } = originalRender(...args);
+): Promise<RenderControls> => {
+  const { stdin: originalStdin, lastFrame, stdout } = originalRender(...args);
   const write = async (data: string) => {
     originalStdin.write(data);
     await nextTick();
@@ -60,33 +49,16 @@ export const render = async (
     await enter();
   };
   await nextTick();
-  const expectOutput: ExtendedRender["expectOutput"] = (...expected) => {
-    const lastFrame = rest.lastFrame()!.split("\n");
-    // We provide "expected" with newlines sometimes
-    const expectedFlat = expected.flatMap((element) =>
-      element ? element.split("\n") : element,
-    );
-    expect(lastFrame.join("\n")).toEqual(
-      lastFrame
-        .map((_, index) => {
-          const expectedLine = expectedFlat[index];
-          return expectedLine === null ||
-            (expectedLine === undefined &&
-              expectedFlat[expectedFlat.length - 1] === null)
-            ? lastFrame[index]
-            : expectedLine;
-        })
-        .join("\n"),
-    );
-  };
   return {
-    ...rest,
-    stdin: { write, writeLn, enter, backspace, leftArrow, rightArrow },
-    expectOutput,
-    expectEncrypted: ({ privateKey, getEncrypted, expected }) => {
-      const actual = getEncrypted(rest.lastFrame()!.split("\n"));
-      const encryptedData = deserializeEncryptedData(actual);
-      expect(decryptText(encryptedData, privateKey)).toEqual(expected);
+    lastFrameLines: (delimiter = "\n") => {
+      /* c8 ignore next */
+      const frame = lastFrame() ?? "";
+      return frame
+        .split(delimiter)
+        .map((line) => line.trim())
+        .filter(Boolean);
     },
+    stdin: { write, writeLn, enter, backspace, leftArrow, rightArrow },
+    stdout,
   };
 };

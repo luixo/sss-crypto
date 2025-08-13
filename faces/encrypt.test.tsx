@@ -97,44 +97,60 @@ describe("validation", () => {
 describe("encryption", () => {
   test("input properly displayed", async () => {
     const { publicKey } = generatePair();
-    const { expectOutput, stdin } = await render(
+    const { lastFrameLines, stdin } = await render(
       <face.Component publicKey={publicKey} />,
     );
-    expectOutput("Please input text to encrypt:", chalk.red("(no input)"));
+    await expect
+      .poll(lastFrameLines)
+      .toEqual(["Please input text to encrypt:", chalk.red("(no input)")]);
     await stdin.write("1");
-    expectOutput("Please input text to encrypt:", chalk.green("1"));
+    await expect
+      .poll(lastFrameLines)
+      .toEqual(["Please input text to encrypt:", chalk.green("1")]);
     await stdin.write("11");
-    expectOutput("Please input text to encrypt:", chalk.green("111"));
+    await expect
+      .poll(lastFrameLines)
+      .toEqual(["Please input text to encrypt:", chalk.green("111")]);
     await stdin.backspace();
-    expectOutput("Please input text to encrypt:", chalk.green("11"));
+    await expect
+      .poll(lastFrameLines)
+      .toEqual(["Please input text to encrypt:", chalk.green("11")]);
   });
 
   describe("text is encrypted", () => {
     test("provided externally", async () => {
       const textToEncrypt = "Hello world";
       const { publicKey, privateKey } = generatePair();
-      const { expectOutput, lastFrame } = await render(
+      const { lastFrameLines } = await render(
         <face.Component publicKey={publicKey} input={textToEncrypt} />,
       );
-      const [, ...encryptedText] = lastFrame()!.split("\n");
+      const [, ...encryptedText] = lastFrameLines();
       const encryptedData = deserializeEncryptedData(encryptedText.join(""));
-      expectOutput("Encryption result:", ...encryptedText);
+      await expect
+        .poll(lastFrameLines)
+        .toEqual(["Encryption result:", ...encryptedText]);
       expect(decryptText(encryptedData, privateKey)).toEqual(textToEncrypt);
     });
 
     test("provided manually", async () => {
       const textToEncrypt = "Hello world";
       const { publicKey, privateKey } = generatePair();
-      const { expectOutput, lastFrame, stdin } = await render(
+      const { lastFrameLines, stdin } = await render(
         <face.Component publicKey={publicKey} />,
       );
-      expectOutput("Please input text to encrypt:", chalk.red("(no input)"));
+      await expect
+        .poll(lastFrameLines)
+        .toEqual(["Please input text to encrypt:", chalk.red("(no input)")]);
       await stdin.enter();
-      expectOutput("Please input text to encrypt:", chalk.red("(no input)"));
+      await expect
+        .poll(lastFrameLines)
+        .toEqual(["Please input text to encrypt:", chalk.red("(no input)")]);
       await stdin.writeLn(textToEncrypt);
-      const [, ...encryptedText] = lastFrame()!.split("\n");
+      const [, ...encryptedText] = lastFrameLines();
       const encryptedData = deserializeEncryptedData(encryptedText.join(""));
-      expectOutput("Encryption result:", ...encryptedText);
+      await expect
+        .poll(lastFrameLines)
+        .toEqual(["Encryption result:", ...encryptedText]);
       expect(decryptText(encryptedData, privateKey)).toEqual(textToEncrypt);
     });
 
@@ -144,16 +160,22 @@ describe("encryption", () => {
         crypto.getRandomValues(array).buffer,
       );
       const { publicKey, privateKey } = generatePair();
-      const { expectOutput, lastFrame, stdin } = await render(
+      const { lastFrameLines, stdin } = await render(
         <face.Component publicKey={publicKey} />,
       );
-      expectOutput("Please input text to encrypt:", chalk.red("(no input)"));
+      await expect
+        .poll(lastFrameLines)
+        .toEqual(["Please input text to encrypt:", chalk.red("(no input)")]);
       await stdin.enter();
-      expectOutput("Please input text to encrypt:", chalk.red("(no input)"));
+      await expect
+        .poll(lastFrameLines)
+        .toEqual(["Please input text to encrypt:", chalk.red("(no input)")]);
       await stdin.writeLn(textToEncrypt);
-      const [, ...encryptedText] = lastFrame()!.split("\n");
+      const [, ...encryptedText] = lastFrameLines();
       const encryptedData = deserializeEncryptedData(encryptedText.join(""));
-      expectOutput("Encryption result:", ...encryptedText);
+      await expect
+        .poll(lastFrameLines)
+        .toEqual(["Encryption result:", ...encryptedText]);
       expect(decryptText(encryptedData, privateKey)).toEqual(textToEncrypt);
     });
   });
@@ -163,89 +185,118 @@ describe("encryption", () => {
       const textToEncrypt =
         "Hello <% enter your name %>, this is <% enter other name %> and welcome!";
       const { publicKey, privateKey } = generatePair();
-      const { expectEncrypted, expectOutput, stdin } = await render(
+      const { lastFrameLines, stdin } = await render(
         <face.Component publicKey={publicKey} input={textToEncrypt} />,
       );
-      expectOutput(null, null, null, null, chalk.red("(no input)"));
+      await expect
+        .poll(lastFrameLines)
+        .toEqual([
+          "+--------------------------------------------------------------------------------------------------+",
+          "|Hello <% enter your name %>, this is ...                                                          |",
+          "+--------------------------------------------------------------------------------------------------+",
+          "Please input a substitute:",
+          chalk.red("(no input)"),
+        ]);
       await stdin.write("A");
-      expectOutput(null, null, null, null, chalk.green("A"));
+      await expect
+        .poll(lastFrameLines)
+        .toEqual([
+          "+--------------------------------------------------------------------------------------------------+",
+          "|Hello <% enter your name %>, this is ...                                                          |",
+          "+--------------------------------------------------------------------------------------------------+",
+          "Please input a substitute:",
+          chalk.green("A"),
+        ]);
       await stdin.writeLn("lice");
       await stdin.writeLn("Bob");
-      expectEncrypted({
-        privateKey,
-        getEncrypted: (actual) => actual.slice(1).join(""),
-        expected: textToEncrypt
+      const actual = lastFrameLines().slice(1).join("");
+      const encryptedData = deserializeEncryptedData(actual);
+      expect(decryptText(encryptedData, privateKey)).toEqual(
+        textToEncrypt
           .replace("<% enter your name %>", "Alice")
           .replace("<% enter other name %>", "Bob"),
-      });
+      );
     });
 
     test("substitute input interaction", async () => {
       const textToEncrypt =
         "Hello <% enter your name %>, this is <% enter other name %> and <% what should we say? %>!";
       const { publicKey } = generatePair();
-      const { expectOutput, stdin, stdout } = await render(
+      const { lastFrameLines, stdin, stdout } = await render(
         <face.Component publicKey={publicKey} input={textToEncrypt} />,
       );
-      expectOutput(
-        ...withBox(
-          `Hello ${chalk.green("<% enter your name %>")}, this is ...`,
-          stdout.columns,
-        ),
-        "Please input a substitute:",
-        chalk.red("(no input)"),
-      );
+      await expect
+        .poll(lastFrameLines)
+        .toEqual([
+          ...withBox(
+            `Hello ${chalk.green("<% enter your name %>")}, this is ...`,
+            stdout.columns,
+          ),
+          "Please input a substitute:",
+          chalk.red("(no input)"),
+        ]);
       await stdin.writeLn("Alice");
-      expectOutput(
-        "✔️  [enter your name -> 5 symbol(s)]",
-        ...withBox(
-          `..., this is ${chalk.green("<% enter other name %>")} and <% wh...`,
-          stdout.columns,
-        ),
-        "Please input a substitute:",
-        chalk.red("(no input)"),
-      );
+      await expect
+        .poll(lastFrameLines)
+        .toEqual([
+          "✔️  [enter your name -> 5 symbol(s)]",
+          ...withBox(
+            `..., this is ${chalk.green("<% enter other name %>")} and <% wh...`,
+            stdout.columns,
+          ),
+          "Please input a substitute:",
+          chalk.red("(no input)"),
+        ]);
       await stdin.writeLn("Bob");
-      expectOutput(
-        "✔️  [enter your name -> 5 symbol(s)]",
-        "✔️  [enter other name -> 3 symbol(s)]",
-        ...withBox(
-          `...me %> and ${chalk.green("<% what should we say? %>")}`,
-          stdout.columns,
-        ),
-        "Please input a substitute:",
-        chalk.red("(no input)"),
-      );
+      await expect
+        .poll(lastFrameLines)
+        .toEqual([
+          "✔️  [enter your name -> 5 symbol(s)]",
+          "✔️  [enter other name -> 3 symbol(s)]",
+          ...withBox(
+            `...me %> and ${chalk.green("<% what should we say? %>")}`,
+            stdout.columns,
+          ),
+          "Please input a substitute:",
+          chalk.red("(no input)"),
+        ]);
     });
 
     test("border case without dots", async () => {
       const textToEncrypt = "<% start %> and <% end %>";
       const { publicKey } = generatePair();
-      const { expectOutput, stdin, stdout } = await render(
+      const { lastFrameLines, stdin, stdout } = await render(
         <face.Component publicKey={publicKey} input={textToEncrypt} />,
       );
-      expectOutput(
-        ...withBox(
-          `${chalk.green("<% start %>")} and <% en...`,
-          stdout.columns,
-        ),
-        "Please input a substitute:",
-        chalk.red("(no input)"),
-      );
+      await expect
+        .poll(lastFrameLines)
+        .toEqual([
+          ...withBox(
+            `${chalk.green("<% start %>")} and <% en...`,
+            stdout.columns,
+          ),
+          "Please input a substitute:",
+          chalk.red("(no input)"),
+        ]);
       await stdin.writeLn("Alice");
-      expectOutput(
-        "✔️  [start -> 5 symbol(s)]",
-        ...withBox(`...rt %> and ${chalk.green("<% end %>")}`, stdout.columns),
-        "Please input a substitute:",
-        chalk.red("(no input)"),
-      );
+      await expect
+        .poll(lastFrameLines)
+        .toEqual([
+          "✔️  [start -> 5 symbol(s)]",
+          ...withBox(
+            `...rt %> and ${chalk.green("<% end %>")}`,
+            stdout.columns,
+          ),
+          "Please input a substitute:",
+          chalk.red("(no input)"),
+        ]);
     });
 
     test("arrows work to navigate substitutes", async () => {
       const textToEncrypt =
         "Hello <% enter your name %>, this is <% enter other name %> and <% what should we say? %>!";
       const { publicKey } = generatePair();
-      const { expectOutput, stdin, stdout, lastFrame } = await render(
+      const { lastFrameLines, stdin, stdout } = await render(
         <face.Component publicKey={publicKey} input={textToEncrypt} />,
       );
       await stdin.writeLn("Alice");
@@ -254,36 +305,40 @@ describe("encryption", () => {
 
       // Can move around frames
       await stdin.leftArrow();
-      expectOutput(
-        "✔️  [enter your name -> 5 symbol(s)]",
-        chalk.green("✔️  [enter other name -> 3 symbol(s)]"),
-        "✔️  [what should we say? -> 7 symbol(s)]",
-        ...withBox(
-          `..., this is ${chalk.green("<% enter other name %>")} and <% wh...`,
-          stdout.columns,
-        ),
-        "Please input a substitute:",
-        chalk.green("Bob"),
-      );
+      await expect
+        .poll(lastFrameLines)
+        .toEqual([
+          "✔️  [enter your name -> 5 symbol(s)]",
+          chalk.green("✔️  [enter other name -> 3 symbol(s)]"),
+          "✔️  [what should we say? -> 7 symbol(s)]",
+          ...withBox(
+            `..., this is ${chalk.green("<% enter other name %>")} and <% wh...`,
+            stdout.columns,
+          ),
+          "Please input a substitute:",
+          chalk.green("Bob"),
+        ]);
       await stdin.rightArrow();
-      expectOutput(
-        "✔️  [enter your name -> 5 symbol(s)]",
-        "✔️  [enter other name -> 3 symbol(s)]",
-        chalk.green("✔️  [what should we say? -> 7 symbol(s)]"),
-        ...withBox(
-          `...me %> and ${chalk.green("<% what should we say? %>")}`,
-          stdout.columns,
-        ),
-        "Please input a substitute:",
-        chalk.green("Charlie"),
-      );
+      await expect
+        .poll(lastFrameLines)
+        .toEqual([
+          "✔️  [enter your name -> 5 symbol(s)]",
+          "✔️  [enter other name -> 3 symbol(s)]",
+          chalk.green("✔️  [what should we say? -> 7 symbol(s)]"),
+          ...withBox(
+            `...me %> and ${chalk.green("<% what should we say? %>")}`,
+            stdout.columns,
+          ),
+          "Please input a substitute:",
+          chalk.green("Charlie"),
+        ]);
 
       // Can't go before 1st frame
       await stdin.leftArrow();
       await stdin.leftArrow();
-      const firstFrame = lastFrame();
+      const firstFrame = lastFrameLines();
       await stdin.leftArrow();
-      expect(firstFrame).toEqual(lastFrame());
+      expect(firstFrame).toEqual(lastFrameLines());
 
       await stdin.rightArrow();
 
@@ -291,13 +346,18 @@ describe("encryption", () => {
       await stdin.rightArrow();
       await stdin.backspace(7);
       await stdin.rightArrow();
-      const thirdFrame = lastFrame();
+      const thirdFrame = lastFrameLines();
       await stdin.rightArrow();
-      expect(thirdFrame).toEqual(lastFrame());
+      expect(thirdFrame).toEqual(lastFrameLines());
 
       await stdin.write("Charlie");
       await stdin.rightArrow();
-      expectOutput("Encryption result:", null);
+      await expect
+        .poll(() => {
+          const lines = lastFrameLines();
+          return lines.slice(0, 1);
+        })
+        .toEqual(["Encryption result:"]);
     });
   });
 });

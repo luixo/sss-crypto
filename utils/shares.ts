@@ -1,13 +1,42 @@
 import secrets from "secrets.js";
-import { parseNumber } from "./number";
-import { SHARE_LENGTH } from "./consts";
+import z from "zod";
 
-export type ShareObject = {
-  threshold: number;
-  bits: number;
-  id: number;
-  data: string;
-};
+import { SHARE_LENGTH } from "./consts";
+import { validate } from "./validation";
+
+const serializedShareSchema = z
+  .string()
+  .regex(/^\d+\|\d+\|\d+\|[a-zA-Z0-9+=/]*$/, {
+    error: "Share format is incorrect",
+  });
+const shareObjectSchema = z
+  .object({
+    threshold: z.coerce.number().min(2),
+    bits: z
+      .string()
+      .transform((input) => Number.parseInt(input, 36))
+      .pipe(z.number().min(3).max(20)),
+    id: z
+      .string()
+      .transform((input) => Number.parseInt(input, 16))
+      .pipe(z.number().min(1)),
+    data: z
+      .string()
+      .regex(
+        /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/,
+        {
+          error: "Expected to have base64 for a share body",
+        },
+      )
+      .refine((data) => data.length === SHARE_LENGTH, {
+        error: `Expected to have ${SHARE_LENGTH} symbols for a share body`,
+      }),
+  })
+  .refine(({ bits, id }) => id <= 2 ** (bits - 1), {
+    error: "Expected id to be in Galois field",
+  });
+
+export type ShareObject = z.infer<typeof shareObjectSchema>;
 
 export const serializeShare = ({
   bits,
@@ -17,34 +46,10 @@ export const serializeShare = ({
 }: ShareObject): string =>
   [threshold, bits.toString(36), id.toString(16), data].join("|");
 
-export const deserializeShare = (input: string): ShareObject => {
-  const [thresholdRaw, bitsBase36, idHex, data] = input.split("|");
-  const threshold = parseNumber(thresholdRaw, "threshold", {
-    min: 2,
-  });
-  const bits = parseNumber(bitsBase36, "Galois field bit", {
-    min: 3,
-    max: 20,
-    type: "base36",
-  });
-  const id = parseNumber(idHex, "id", {
-    type: "hex",
-    min: 1,
-    max: 2 ** (bits - 1),
-  });
-  if (data.length !== SHARE_LENGTH) {
-    throw new Error(
-      `Expected to have ${SHARE_LENGTH} symbols for a share body, got ${data.length}`,
-    );
-  }
-  if (
-    !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(
-      data,
-    )
-  ) {
-    throw new Error("Expected to have base64 for a share body");
-  }
-  return { threshold, bits, id, data };
+export const deserializeShare = async (input: string): Promise<ShareObject> => {
+  await validate(serializedShareSchema, input);
+  const [threshold, bits, id, data] = input.split("|");
+  return validate(shareObjectSchema, { threshold, bits, id, data });
 };
 
 const serializeShareSecret = (

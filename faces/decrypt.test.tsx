@@ -14,7 +14,6 @@ import {
 import { serializeShare } from "../utils/shares";
 import { render } from "../utils/render";
 import { sequence } from "../utils/promise";
-import { pickRandom } from "../utils/array";
 import { SHARE_LENGTH } from "../utils/consts";
 import { privateKeyToShares } from "../utils/converters";
 import { validate } from "../utils/validation";
@@ -219,25 +218,19 @@ describe("decryption", () => {
       const privateKeyShares = privateKeyToShares(privateKey, {
         threshold,
         shares: 5,
-      }).map((share) =>
-        serializeShare({
-          ...share,
-          data: Buffer.from(
-            Buffer.from(share.data, "base64").toString("hex").slice(0, -10),
-            "hex",
-          ).toString("base64"),
-        }),
-      );
+      }).map((share) => serializeShare(share).replace("|", ""));
 
-      const { expectOutput, stdin } = await render(
+      const { lastFrameLines, stdin } = await render(
         <face.Component encryptedData={encryptedData} />,
       );
       await stdin.writeLn(privateKeyShares[0]);
-      expectOutput(
-        "Please input share #1",
-        chalk.green("(input of length 1602)"),
-        "Error: Share format is incorrect",
-      );
+      await expect
+        .poll(lastFrameLines)
+        .toEqual([
+          "Please input share #1",
+          chalk.green("(input of length 1605)"),
+          'Error: At "<root>": Share format is incorrect',
+        ]);
     });
 
     test("invalid shares", async () => {
@@ -257,7 +250,7 @@ describe("decryption", () => {
         }),
       );
 
-      const { expectOutput, stdin } = await render(
+      const { lastFrameLines, stdin } = await render(
         <face.Component encryptedData={encryptedData} />,
       );
       await sequence(
@@ -265,13 +258,17 @@ describe("decryption", () => {
           .slice(0, threshold)
           .map((share) => () => stdin.writeLn(share)),
       );
-      expectOutput(
-        "Fatal error:",
-        "Can't combine shares, probably shares are corrupted",
-        'Press "Enter" to restart',
-      );
+      await expect
+        .poll(lastFrameLines)
+        .toEqual([
+          "Fatal error:",
+          "Can't combine shares, probably shares are corrupted",
+          'Press "Enter" to restart',
+        ]);
       await stdin.enter();
-      expectOutput("Please input share #1", chalk.red("(no input)"));
+      await expect
+        .poll(lastFrameLines)
+        .toEqual(["Please input share #1", chalk.red("(no input)")]);
     });
 
     describe("corrupted input data", () => {
@@ -290,7 +287,7 @@ describe("decryption", () => {
           shares: 5,
         }).map(serializeShare);
 
-        const { expectOutput, stdin } = await render(
+        const { lastFrameLines, stdin } = await render(
           <face.Component encryptedData={modifyData(encryptedData)} />,
         );
         await sequence(
@@ -298,7 +295,9 @@ describe("decryption", () => {
             .slice(0, threshold)
             .map((share) => () => stdin.writeLn(share)),
         );
-        expectOutput("Fatal error:", message, 'Press "Enter" to restart');
+        await expect
+          .poll(lastFrameLines)
+          .toEqual(["Fatal error:", message, 'Press "Enter" to restart']);
       };
 
       const replaceFirstSymbol = (input: string) =>
@@ -345,24 +344,34 @@ describe("decryption", () => {
       const privateKeyShares = privateKeyToShares(privateKey, {
         threshold,
         shares: 5,
-      }).map((share) =>
-        serializeShare({ ...share, data: `${share.data}malformed` }),
-      );
+      }).map((share) => {
+        const serializedShare = serializeShare(share);
+        return `${serializedShare.slice(0, -1)}!`;
+      });
 
-      const { expectOutput, stdin } = await render(
+      const { lastFrameLines, stdin } = await render(
         <face.Component encryptedData={encryptedData} />,
       );
       await stdin.writeLn(privateKeyShares[0]);
-      expectOutput(
-        "Please input share #1",
-        chalk.green(`(input of length ${privateKeyShares[0].length})`),
-        chalk.red("Error: Expected to have base64 for a share body"),
-      );
+      await expect
+        .poll(lastFrameLines)
+        .toEqual([
+          "Please input share #1",
+          chalk.green(`(input of length ${privateKeyShares[0].length - 1})`),
+          chalk.red(
+            `Error: At "data": Expected to have base64 for a share body`,
+          ),
+          chalk.red(
+            `At "data": Expected to have 1600 symbols for a share body`,
+          ),
+        ]);
       await stdin.backspace();
-      expectOutput(
-        "Please input share #1",
-        chalk.green(`(input of length ${privateKeyShares[0].length - 1})`),
-      );
+      await expect
+        .poll(lastFrameLines)
+        .toEqual([
+          "Please input share #1",
+          chalk.green(`(input of length ${privateKeyShares[0].length - 2})`),
+        ]);
     });
 
     describe("incorrent share format", () => {
@@ -371,16 +380,18 @@ describe("decryption", () => {
           "Hello world\nNext line please",
           generatePair().publicKey,
         );
-        const { expectOutput, stdin } = await render(
+        const { lastFrameLines, stdin } = await render(
           <face.Component encryptedData={encryptedData} />,
         );
         const corruptedShare = "3|05|anything";
         await stdin.writeLn(corruptedShare);
-        expectOutput(
-          "Please input share #1",
-          chalk.green(`(input of length ${corruptedShare.length})`),
-          chalk.red("Error: Share format is incorrect"),
-        );
+        await expect
+          .poll(lastFrameLines)
+          .toEqual([
+            "Please input share #1",
+            chalk.green(`(input of length ${corruptedShare.length})`),
+            chalk.red('Error: At "<root>": Share format is incorrect'),
+          ]);
       });
 
       test("no delimiters", async () => {
@@ -388,16 +399,18 @@ describe("decryption", () => {
           "Hello world\nNext line please",
           generatePair().publicKey,
         );
-        const { expectOutput, stdin } = await render(
+        const { lastFrameLines, stdin } = await render(
           <face.Component encryptedData={encryptedData} />,
         );
         const corruptedShare = "foo";
         await stdin.writeLn(corruptedShare);
-        expectOutput(
-          "Please input share #1",
-          chalk.green(`(input of length ${corruptedShare.length})`),
-          chalk.red("Error: Share format is incorrect"),
-        );
+        await expect
+          .poll(lastFrameLines)
+          .toEqual([
+            "Please input share #1",
+            chalk.green(`(input of length ${corruptedShare.length})`),
+            chalk.red('Error: At "<root>": Share format is incorrect'),
+          ]);
       });
     });
 
@@ -414,16 +427,18 @@ describe("decryption", () => {
         serializeShare({ ...share, threshold: share.threshold + index }),
       );
 
-      const { expectOutput, stdin } = await render(
+      const { lastFrameLines, stdin } = await render(
         <face.Component encryptedData={encryptedData} />,
       );
       await stdin.writeLn(privateKeyShares[0]);
       await stdin.writeLn(privateKeyShares[1]);
-      expectOutput(
-        "Fatal error:",
-        "Expected all shares to have the same threshold, got 3 and 4",
-        'Press "Enter" to restart',
-      );
+      await expect
+        .poll(lastFrameLines)
+        .toEqual([
+          "Fatal error:",
+          "Expected all shares to have the same threshold, got 3 and 4",
+          'Press "Enter" to restart',
+        ]);
     });
   });
 
@@ -432,24 +447,24 @@ describe("decryption", () => {
       "Hello world\nNext line please",
       generatePair().publicKey,
     );
-    const { expectOutput, stdin } = await render(
+    const { lastFrameLines, stdin } = await render(
       <face.Component encryptedData={encryptedData} />,
     );
-    const expectLastLine = (lastLine: string) => {
-      expectOutput("Please input share #1", lastLine);
-    };
-    expectLastLine(chalk.red("(no input)"));
+    const expectLastLine = (lastLine: string) =>
+      expect.poll(lastFrameLines).toEqual(["Please input share #1", lastLine]);
+
+    await expectLastLine(chalk.red("(no input)"));
     await stdin.write("1");
-    expectLastLine(chalk.green("(input of length 1)"));
+    await expectLastLine(chalk.green("(input of length 1)"));
     await stdin.write("11");
-    expectLastLine(chalk.green("(input of length 3)"));
+    await expectLastLine(chalk.green("(input of length 3)"));
     await stdin.backspace();
-    expectLastLine(chalk.green("(input of length 2)"));
+    await expectLastLine(chalk.green("(input of length 2)"));
     await stdin.backspace();
     await stdin.backspace();
-    expectLastLine(chalk.red("(no input)"));
+    await expectLastLine(chalk.red("(no input)"));
     await stdin.backspace();
-    expectLastLine(chalk.red("(no input)"));
+    await expectLastLine(chalk.red("(no input)"));
   });
 
   test("threshold calculated from data properly", async () => {
@@ -458,7 +473,7 @@ describe("decryption", () => {
       generatePair().publicKey,
     );
     const threshold = 2 + Math.floor(Math.random() * 100);
-    const { expectOutput, stdin } = await render(
+    const { lastFrameLines, stdin } = await render(
       <face.Component encryptedData={encryptedData} />,
     );
     await stdin.writeLn(
@@ -469,11 +484,13 @@ describe("decryption", () => {
         data: Buffer.from("a".repeat(SHARE_LENGTH * 0.75)).toString("base64"),
       }),
     );
-    expectOutput(
-      "Input share #1 registered.",
-      `Please input share #2 (out of ${threshold})`,
-      chalk.red("(no input)"),
-    );
+    await expect
+      .poll(lastFrameLines)
+      .toEqual([
+        "Input share #1 registered.",
+        `Please input share #2 (out of ${threshold})`,
+        chalk.red("(no input)"),
+      ]);
   });
 
   test("shares registration displayed properly", async () => {
@@ -482,7 +499,7 @@ describe("decryption", () => {
       generatePair().publicKey,
     );
     const threshold = 5 + Math.floor(Math.random() * 10);
-    const { expectOutput, stdin } = await render(
+    const { lastFrameLines, stdin } = await render(
       <face.Component encryptedData={encryptedData} />,
     );
     await sequence(
@@ -497,15 +514,18 @@ describe("decryption", () => {
             ),
           }),
         );
-        expectOutput(
-          ...new Array(index + 1)
-            .fill(null)
-            .map(
-              (__, shareIndex) => `Input share #${shareIndex + 1} registered.`,
-            ),
-          `Please input share #${index + 2} (out of ${threshold})`,
-          chalk.red("(no input)"),
-        );
+        await expect
+          .poll(lastFrameLines)
+          .toEqual([
+            ...new Array(index + 1)
+              .fill(null)
+              .map(
+                (__, shareIndex) =>
+                  `Input share #${shareIndex + 1} registered.`,
+              ),
+            `Please input share #${index + 2} (out of ${threshold})`,
+            chalk.red("(no input)"),
+          ]);
       }),
     );
   });
@@ -518,19 +538,9 @@ describe("decryption", () => {
     const privateKeyShares = privateKeyToShares(privateKey, {
       threshold,
       shares: 5,
-    }).map((share) => {
-      const randomIndex = Math.floor(Math.random() * share.data.length);
-      return serializeShare({
-        ...share,
-        data: [
-          ...share.data.slice(0, randomIndex),
-          pickRandom("\n", "я", "!", "#"),
-          ...share.data.slice(randomIndex),
-        ].join(""),
-      });
-    });
+    }).map(serializeShare);
 
-    const { expectOutput, stdin } = await render(
+    const { lastFrameLines, stdin } = await render(
       <face.Component encryptedData={encryptedData} />,
     );
     await sequence(
@@ -538,6 +548,8 @@ describe("decryption", () => {
         .slice(0, threshold)
         .map((privateKeyShare) => () => stdin.writeLn(privateKeyShare)),
     );
-    expectOutput("Decrypt result:", textToEncrypt);
+    await expect
+      .poll(lastFrameLines)
+      .toEqual(["Decrypt result:", ...textToEncrypt.split("\n")]);
   });
 });

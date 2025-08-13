@@ -78,72 +78,92 @@ describe("validation", () => {
 describe("shares generation", () => {
   test("no pub key file path", async () => {
     const sharesAmount = 5;
-    const { lastFrame } = await render(
+    const { lastFrameLines } = await render(
       <face.Component threshold={3} shares={sharesAmount} />,
     );
-    const [warningBlock, publicKeyBlock, ...sharesBlocks] = lastFrame()!
-      .split("\n\n")
-      .map((str) => str.trim())
-      .filter(Boolean);
-    expect(warningBlock).toEqual(
-      chalk.yellow(
-        "! Save this data, it will be erased when you close the terminal !",
-      ),
-    );
-    const publicKey = publicKeyBlock.split("\n").slice(2, -1);
-    expect(publicKey.join("")).toHaveLength(PUBLIC_KEY_LENGTH);
-    expect(publicKeyBlock).toEqual(
-      [
-        chalk.cyan("Public key"),
-        "-----BEGIN RSA PUBLIC KEY-----",
-        ...publicKey,
-        "-----END RSA PUBLIC KEY-----",
-      ].join("\n"),
-    );
-    expect(sharesBlocks).toHaveLength(sharesAmount);
-    sharesBlocks.forEach((shareBlock, index) => {
-      const serializedShare = shareBlock.split("\n").slice(1);
-      expect(serializedShare.join("")).toHaveLength(
-        SHARE_LENGTH + SHARE_PREFIX_LENGTH,
-      );
-      expect(shareBlock).toEqual(
-        [chalk.green(`Share #${index + 1}`), ...serializedShare].join("\n"),
-      );
-    });
+    await expect
+      .poll(() => {
+        const [warningBlock, publicKeyBlock, ...sharesBlock] =
+          lastFrameLines("\n\n");
+        const publicKeyLines = publicKeyBlock.split("\n");
+        const publicKeyLength = publicKeyLines
+          .slice(2, -1)
+          .reduce((acc, line) => acc + line.length, 0);
+        return [
+          warningBlock,
+          [
+            ...publicKeyLines.slice(0, 2),
+            publicKeyLength,
+            ...publicKeyLines.slice(-1),
+          ].join("\n"),
+          ...sharesBlock.map((shareBlock) => {
+            const lines = shareBlock.split("\n");
+            if (lines[0].includes("Share #")) {
+              return [
+                ...lines.slice(0, 1),
+                `share: ${lines.slice(1).reduce((acc, line) => acc + line.length, 0)}`,
+              ];
+            }
+            return lines;
+          }),
+        ];
+      })
+      .toEqual([
+        chalk.yellow(
+          "! Save this data, it will be erased when you close the terminal !",
+        ),
+        [
+          chalk.cyan("Public key"),
+          "-----BEGIN RSA PUBLIC KEY-----",
+          PUBLIC_KEY_LENGTH,
+          "-----END RSA PUBLIC KEY-----",
+        ].join("\n"),
+        ...Array.from({ length: sharesAmount }).map((_, index) => [
+          chalk.green(`Share #${index + 1}`),
+          `share: ${SHARE_LENGTH + SHARE_PREFIX_LENGTH}`,
+        ]),
+      ]);
   });
 
   test("with pub key file path", async () => {
     const pubKeyPath = "pub.key";
     const sharesAmount = 5;
-    const { lastFrame } = await render(
+    const { lastFrameLines } = await render(
       <face.Component
         threshold={3}
         shares={sharesAmount}
         pubKeyFilePath={pubKeyPath}
       />,
     );
-    const [warningBlock, publicKeyBlock, ...sharesBlocks] = lastFrame()!
-      .split("\n\n")
-      .map((str) => str.trim())
-      .filter(Boolean);
-    expect(warningBlock).toEqual(
-      chalk.yellow(
-        "! Save this data, it will be erased when you close the terminal !",
-      ),
-    );
-    expect(publicKeyBlock).toEqual(
-      chalk.green(`Public key is saved to "${pubKeyPath}"`),
-    );
-    expect(sharesBlocks).toHaveLength(sharesAmount);
-    sharesBlocks.forEach((shareBlock, index) => {
-      const serializedShare = shareBlock.split("\n").slice(1);
-      expect(serializedShare.join("")).toHaveLength(
-        SHARE_LENGTH + SHARE_PREFIX_LENGTH,
-      );
-      expect(shareBlock).toEqual(
-        [chalk.green(`Share #${index + 1}`), ...serializedShare].join("\n"),
-      );
-    });
+    await expect
+      .poll(() => {
+        const [warningBlock, publicKeyBlock, ...sharesBlock] =
+          lastFrameLines("\n\n");
+        return [
+          warningBlock,
+          publicKeyBlock,
+          ...sharesBlock.map((shareBlock) => {
+            const lines = shareBlock.split("\n");
+            if (lines[0].includes("Share #")) {
+              return [
+                ...lines.slice(0, 1),
+                `share: ${lines.slice(1).reduce((acc, line) => acc + line.length, 0)}`,
+              ];
+            }
+            return lines;
+          }),
+        ];
+      })
+      .toEqual([
+        chalk.yellow(
+          "! Save this data, it will be erased when you close the terminal !",
+        ),
+        chalk.green(`Public key is saved to "${pubKeyPath}"`),
+        ...Array.from({ length: sharesAmount }).map((_, index) => [
+          chalk.green(`Share #${index + 1}`),
+          `share: ${SHARE_LENGTH + SHARE_PREFIX_LENGTH}`,
+        ]),
+      ]);
     const publicKeyResult = (await fs.readFile("pub.key")).toString("utf-8");
     const publicKey = publicKeyResult.split("\n").slice(1, -2);
     expect(publicKey.join("")).toHaveLength(PUBLIC_KEY_LENGTH);
@@ -159,14 +179,11 @@ describe("shares generation", () => {
 
   test("verify shares can decrypt data", async () => {
     const sharesAmount = 5;
-    const { lastFrame } = await render(
+    const { lastFrameLines } = await render(
       <face.Component threshold={3} shares={sharesAmount} />,
     );
 
-    const [, publicKeyBlock, ...sharesBlocks] = lastFrame()!
-      .split("\n\n")
-      .map((str) => str.trim())
-      .filter(Boolean);
+    const [, publicKeyBlock, ...sharesBlocks] = lastFrameLines("\n\n");
     const serializedShares = sharesBlocks.map((shareBlock) =>
       shareBlock.split("\n").slice(1).join(""),
     );
@@ -178,7 +195,9 @@ describe("shares generation", () => {
     );
     const decryptedText = decryptText(
       encryptedData,
-      sharesToPrivateKey(serializedShares.map(deserializeShare)),
+      sharesToPrivateKey(
+        await Promise.all(serializedShares.map(deserializeShare)),
+      ),
     );
     expect(textToEncrypt).toEqual(decryptedText);
   });
