@@ -1,14 +1,15 @@
 import { test, describe, expect } from "vitest";
 import chalk from "chalk";
 
-import { face } from "./add-share";
-import { decryptText, encryptText, generatePair } from "../utils/crypto";
-import { serializeShare, shareObjectSchema } from "../utils/shares";
-import { render } from "../utils/render";
-import { sequence } from "../utils/promise";
-import { SHARE_LENGTH, SHARE_PREFIX_LENGTH } from "../utils/consts";
-import { generateSharesFromKey, sharesToPrivateKey } from "../utils/converters";
-import { validate } from "../utils/validation";
+import { face } from "~/faces/add-share";
+import { decryptText, encryptText, generatePair } from "~/utils/crypto";
+import { serializeShare, shareObjectSchema } from "~/utils/shares";
+import { sequence } from "~/utils/promise";
+import { SHARE_LENGTH, SHARE_PREFIX_LENGTH } from "~/utils/consts";
+import { generateSharesFromKey, sharesToPrivateKey } from "~/utils/converters";
+import { validate } from "~/utils/validation";
+
+import { render } from "./utils/render";
 
 describe("add share", () => {
   describe("errors", () => {

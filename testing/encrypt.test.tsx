@@ -3,11 +3,12 @@ import fs from "node:fs/promises";
 import chalk from "chalk";
 import stripAnsi from "strip-ansi";
 
-import { face } from "./encrypt";
-import { render } from "../utils/render";
-import { decryptText, generatePair, encryptedBoxSchema } from "../utils/crypto";
-import { keyToPem } from "../utils/encoding";
-import { mapArgErrors, validate } from "../utils/validation";
+import { face } from "~/faces/encrypt";
+import { decryptText, generatePair, encryptedBoxSchema } from "~/utils/crypto";
+import { keyToPem } from "~/utils/encoding";
+import { mapArgErrors, validate } from "~/utils/validation";
+
+import { render } from "./utils/render";
 
 const padEndChalked = (
   text: string,

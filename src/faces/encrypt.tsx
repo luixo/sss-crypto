@@ -3,11 +3,11 @@ import { Text, Box, Newline } from "ink";
 
 import type { KeyObject } from "node:crypto";
 import z from "zod";
-import { encryptText, serializeEncryptedData } from "../utils/crypto";
-import type { Face } from "./types";
-import { useKeepAlive } from "../hooks/use-keep-alive";
-import { Input } from "../components/input";
-import { existingFileSchema, publicKeyTransform } from "../utils/schemas";
+import { encryptText, serializeEncryptedData } from "~/utils/crypto";
+import type { Face } from "~/faces/types";
+import { useKeepAlive } from "~/hooks/use-keep-alive";
+import { Input } from "~/components/input";
+import { existingFileSchema, publicKeyTransform } from "~/utils/schemas";
 
 const START_TEMPLATE = "<%";
 const END_TEMPLATE = "%>";

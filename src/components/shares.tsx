@@ -1,7 +1,7 @@
 import type * as React from "react";
 import { Text, Box } from "ink";
-import type { ShareObject } from "../utils/shares";
-import { serializeShare } from "../utils/shares";
+import type { ShareObject } from "~/utils/shares";
+import { serializeShare } from "~/utils/shares";
 
 type Props = {
   shares: ShareObject[];

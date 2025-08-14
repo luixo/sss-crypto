@@ -1,9 +1,9 @@
 import * as React from "react";
 import { Text, Box, Newline } from "ink";
-import type { ShareObject } from "../utils/shares";
-import { shareObjectSchema } from "../utils/shares";
-import { useKeepAlive } from "../hooks/use-keep-alive";
-import { HiddenInput } from "./hidden-input";
+import type { ShareObject } from "~/utils/shares";
+import { shareObjectSchema } from "~/utils/shares";
+import { useKeepAlive } from "~/hooks/use-keep-alive";
+import { HiddenInput } from "~/components/hidden-input";
 
 type Props = {
   onDone: (shares: ShareObject[]) => void;

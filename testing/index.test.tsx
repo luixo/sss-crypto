@@ -4,7 +4,7 @@ import { dryRun, parse } from "cmd-ts";
 import { render as renderTesting } from "ink-testing-library";
 import chalk from "chalk";
 
-import { createProgram } from ".";
+import { createProgram } from "~/index";
 
 const testPublicKey = {
   kty: "RSA",

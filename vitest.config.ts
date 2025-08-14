@@ -1,10 +1,17 @@
 import type { CoverageReporter } from "vitest/node";
+import tsconfigPaths from "vite-tsconfig-paths";
 import { configDefaults, defineConfig } from "vitest/config";
 
 export default defineConfig({
+  plugins: [tsconfigPaths()],
   test: {
     watch: false,
     coverage: {
+      exclude: [
+        ...(configDefaults.coverage.exclude ?? []),
+        "__mocks__",
+        "testing",
+      ],
       all: true,
       enabled: true,
       reporter: [
@@ -12,6 +19,6 @@ export default defineConfig({
         "json-summary",
       ],
     },
-    setupFiles: "setup.ts",
+    setupFiles: "testing/setup.ts",
   },
 });

@@ -4,17 +4,18 @@ import fs from "node:fs/promises";
 import { expect, test, describe } from "vitest";
 
 import chalk from "chalk";
-import { face } from "./generate-shares";
-import { render } from "../utils/render";
-import { decryptText, encryptText, parsePublicKey } from "../utils/crypto";
-import { shareObjectSchema } from "../utils/shares";
+import { face } from "~/faces/generate-shares";
+import { decryptText, encryptText, parsePublicKey } from "~/utils/crypto";
+import { shareObjectSchema } from "~/utils/shares";
 import {
   PUBLIC_KEY_LENGTH,
   SHARE_LENGTH,
   SHARE_PREFIX_LENGTH,
-} from "../utils/consts";
-import { sharesToPrivateKey } from "../utils/converters";
-import { mapArgErrors, validate } from "../utils/validation";
+} from "~/utils/consts";
+import { sharesToPrivateKey } from "~/utils/converters";
+import { mapArgErrors, validate } from "~/utils/validation";
+
+import { render } from "./utils/render";
 
 type Props = React.ComponentProps<(typeof face)["Component"]>;
 

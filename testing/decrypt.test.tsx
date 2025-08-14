@@ -3,19 +3,20 @@ import chalk from "chalk";
 import fs from "node:fs/promises";
 import type z from "zod";
 
-import { face } from "./decrypt";
-import type { encryptedBoxSchema } from "../utils/crypto";
+import { face } from "~/faces/decrypt";
+import type { encryptedBoxSchema } from "~/utils/crypto";
 import {
   encryptText,
   generatePair,
   serializeEncryptedData,
-} from "../utils/crypto";
-import { serializeShare } from "../utils/shares";
-import { render } from "../utils/render";
-import { sequence } from "../utils/promise";
-import { SHARE_LENGTH } from "../utils/consts";
-import { generateSharesFromKey } from "../utils/converters";
-import { mapArgErrors, validate } from "../utils/validation";
+} from "~/utils/crypto";
+import { serializeShare } from "~/utils/shares";
+import { sequence } from "~/utils/promise";
+import { SHARE_LENGTH } from "~/utils/consts";
+import { generateSharesFromKey } from "~/utils/converters";
+import { mapArgErrors, validate } from "~/utils/validation";
+
+import { render } from "./utils/render";
 
 const replaceFirstSymbol = (input: string) =>
   `${input.startsWith("x") ? "y" : "x"}${input.slice(1)}`;

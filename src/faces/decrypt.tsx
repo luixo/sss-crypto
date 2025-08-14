@@ -1,14 +1,14 @@
 import * as React from "react";
 import { Text, Box, Newline } from "ink";
 import z from "zod";
-import type { ShareObject } from "../utils/shares";
-import { decryptText, encryptedBoxSchema } from "../utils/crypto";
-import type { Face } from "./types";
-import { useKeepAlive } from "../hooks/use-keep-alive";
-import { SharesInput } from "../components/shares-input";
-import { useResetKey } from "../hooks/use-reset-key";
-import { sharesToPrivateKey } from "../utils/converters";
-import { existingFileSchema } from "../utils/schemas";
+import type { ShareObject } from "~/utils/shares";
+import { decryptText, encryptedBoxSchema } from "~/utils/crypto";
+import type { Face } from "~/faces/types";
+import { useKeepAlive } from "~/hooks/use-keep-alive";
+import { SharesInput } from "~/components/shares-input";
+import { useResetKey } from "~/hooks/use-reset-key";
+import { sharesToPrivateKey } from "~/utils/converters";
+import { existingFileSchema } from "~/utils/schemas";
 
 const getDecryptedText = (
   encryptedData: z.infer<typeof encryptedBoxSchema>,

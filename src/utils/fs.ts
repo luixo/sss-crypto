@@ -4,7 +4,7 @@ import z from "zod";
 
 export const rootPath = path.resolve(
   path.dirname(new URL(import.meta.url).pathname),
-  "..",
+  "../..",
 );
 
 export const readFileSafe = async (filename: string, ctx: z.RefinementCtx) => {

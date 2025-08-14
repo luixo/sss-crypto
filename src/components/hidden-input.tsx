@@ -1,10 +1,10 @@
 import * as React from "react";
 import chalk from "chalk";
 import type z from "zod";
-import { sanitizeBase64 } from "../utils/encoding";
-import type { Props as InputProps } from "./input";
-import { Input } from "./input";
-import { validate } from "../utils/validation";
+import { sanitizeBase64 } from "~/utils/encoding";
+import type { Props as InputProps } from "~/components/input";
+import { Input } from "~/components/input";
+import { validate } from "~/utils/validation";
 
 type ValidationProps<I, O> = {
   schema: z.ZodType<O, I>;

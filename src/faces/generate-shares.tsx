@@ -3,19 +3,19 @@ import fs from "node:fs/promises";
 import { Text, Box, Newline } from "ink";
 
 import z from "zod";
-import { generatePair } from "../utils/crypto";
-import type { ShareObject, SharesOptions } from "../utils/shares";
-import { keyToPem } from "../utils/encoding";
-import type { Face } from "./types";
-import { SaveDataWarning } from "../components/save-data-warning";
-import { Shares } from "../components/shares";
-import { generateSharesFromKey } from "../utils/converters";
+import { generatePair } from "~/utils/crypto";
+import type { ShareObject, SharesOptions } from "~/utils/shares";
+import { keyToPem } from "~/utils/encoding";
+import type { Face } from "~/faces/types";
+import { SaveDataWarning } from "~/components/save-data-warning";
+import { Shares } from "~/components/shares";
+import { generateSharesFromKey } from "~/utils/converters";
 import {
   localFileTransform,
   notDirectoryTransform,
   sharesSchema,
   thresholdSchema,
-} from "../utils/schemas";
+} from "~/utils/schemas";
 
 type WriteFileStatus = "idle" | "loading" | "done";
 

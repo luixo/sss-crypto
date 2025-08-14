@@ -27,7 +27,7 @@ const overridenRules = {
         devDependencies: [
           "vitest.config.ts",
           "eslint.config.ts",
-          "setup.ts",
+          "testing/**/*",
           "utils/render.ts",
           "**/**.test.tsx",
           "__mocks__/**/*",

@@ -1,16 +1,16 @@
 import * as React from "react";
 import { Text, Box, Newline } from "ink";
 import z from "zod";
-import type { ShareObject } from "../utils/shares";
-import { addShare } from "../utils/shares";
-import type { Face } from "./types";
-import { useKeepAlive } from "../hooks/use-keep-alive";
-import { SharesInput } from "../components/shares-input";
-import { SaveDataWarning } from "../components/save-data-warning";
-import { Share } from "../components/shares";
-import { useResetKey } from "../hooks/use-reset-key";
-import { sharesToPrivateKey } from "../utils/converters";
-import { newSharesAmountSchema } from "../utils/schemas";
+import type { ShareObject } from "~/utils/shares";
+import { addShare } from "~/utils/shares";
+import type { Face } from "~/faces/types";
+import { useKeepAlive } from "~/hooks/use-keep-alive";
+import { SharesInput } from "~/components/shares-input";
+import { SaveDataWarning } from "~/components/save-data-warning";
+import { Share } from "~/components/shares";
+import { useResetKey } from "~/hooks/use-reset-key";
+import { sharesToPrivateKey } from "~/utils/converters";
+import { newSharesAmountSchema } from "~/utils/schemas";
 
 const getNewShare = (shares: ShareObject[]): ShareObject => {
   // We need to verify it's a proper private key
