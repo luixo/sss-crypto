@@ -10,7 +10,7 @@ jobs:
     name: Prettier
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-env
       - name: Run code formatting verification
         run: yarn format:verify
@@ -19,7 +19,7 @@ jobs:
     name: Typecheck
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-env
       - name: Run typecheck
         run: yarn typecheck
@@ -28,7 +28,7 @@ jobs:
     name: Linter
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-env
       - name: Run linter
         run: yarn lint
@@ -39,12 +39,12 @@ jobs:
     outputs:
       coverage: ${{ steps.coverage-percent.outputs.coverage }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-env
       - name: Run tests
         run: yarn test
       - name: Archive code coverage results
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: coverage-report
           path: coverage
@@ -80,7 +80,7 @@ jobs:
     name: Backup repository to S3
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - run: mkdir backups
       - name: Bundle git
         run: git bundle create backups/sss-crypto.bundle HEAD main
