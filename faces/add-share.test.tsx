@@ -3,11 +3,12 @@ import chalk from "chalk";
 
 import { face } from "./add-share";
 import { decryptText, encryptText, generatePair } from "../utils/crypto";
-import { deserializeShare, serializeShare } from "../utils/shares";
+import { serializeShare, shareObjectSchema } from "../utils/shares";
 import { render } from "../utils/render";
 import { sequence } from "../utils/promise";
 import { SHARE_LENGTH, SHARE_PREFIX_LENGTH } from "../utils/consts";
 import { generateSharesFromKey, sharesToPrivateKey } from "../utils/converters";
+import { validate } from "../utils/validation";
 
 describe("add share", () => {
   describe("errors", () => {
@@ -27,7 +28,7 @@ describe("add share", () => {
         .toEqual([
           "Please input share #1",
           chalk.green("(input of length 1605)"),
-          'Error: At "<root>": Share format is incorrect',
+          "Error: Share format is incorrect",
         ]);
     });
 
@@ -83,7 +84,7 @@ describe("add share", () => {
         "Please input share #1",
         // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
         chalk.green(`(input of length ${privateKeyShares[0]!.length})`),
-        chalk.red('Error: At "data": Expected to have base64 for a share body'),
+        chalk.red("Error: Expected to have base64 for a share body"),
       ]);
       await stdin.backspace();
       await expect.poll(lastFrameLines).toEqual([
@@ -103,7 +104,7 @@ describe("add share", () => {
           .toEqual([
             "Please input share #1",
             chalk.green(`(input of length ${corruptedShare.length})`),
-            chalk.red('Error: At "<root>": Share format is incorrect'),
+            chalk.red("Error: Share format is incorrect"),
           ]);
       });
 
@@ -116,7 +117,7 @@ describe("add share", () => {
           .toEqual([
             "Please input share #1",
             chalk.green(`(input of length ${corruptedShare.length})`),
-            chalk.red('Error: At "<root>": Share format is incorrect'),
+            chalk.red("Error: Share format is incorrect"),
           ]);
       });
     });
@@ -280,7 +281,11 @@ describe("add share", () => {
     const decryptedText = decryptText(
       encryptedData,
       sharesToPrivateKey(
-        await Promise.all(serializedShares.map(deserializeShare)),
+        await Promise.all(
+          serializedShares.map(async (share) =>
+            validate(shareObjectSchema, share),
+          ),
+        ),
       ),
     );
     expect(textToEncrypt).toEqual(decryptedText);

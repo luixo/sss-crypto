@@ -5,13 +5,9 @@ import stripAnsi from "strip-ansi";
 
 import { face } from "./encrypt";
 import { render } from "../utils/render";
-import {
-  decryptText,
-  generatePair,
-  deserializeEncryptedData,
-} from "../utils/crypto";
+import { decryptText, generatePair, encryptedBoxSchema } from "../utils/crypto";
 import { keyToPem } from "../utils/encoding";
-import { validate } from "../utils/validation";
+import { mapArgErrors, validate } from "../utils/validation";
 
 const padEndChalked = (
   text: string,
@@ -32,16 +28,16 @@ describe("validation", () => {
   describe("pub key file", () => {
     test("file does not exist", async () => {
       await expect(async () =>
-        validate(face.schema, { pub: "non-existent" }),
-      ).rejects.toThrow('At "pub": Path "non-existent" does not exist.');
+        validate(face.schema, { pub: "non-existent" }, mapArgErrors),
+      ).rejects.toThrow('Arg "pub" error: Path "non-existent" does not exist.');
     });
 
     test("target is a directory", async () => {
       const dirPath = "path/to/dir";
       fs.mkdir(dirPath, { recursive: true });
       await expect(async () =>
-        validate(face.schema, { pub: dirPath }),
-      ).rejects.toThrow('At "pub": File "path/to/dir" is not a file.');
+        validate(face.schema, { pub: dirPath }, mapArgErrors),
+      ).rejects.toThrow('Arg "pub" error: File "path/to/dir" is not a file.');
     });
 
     test("public key data is invalid", async () => {
@@ -49,7 +45,7 @@ describe("validation", () => {
       const pubKeyPath = "path/to/pub.key";
       await fs.writeFile(pubKeyPath, publicKeyData);
       await expect(async () =>
-        validate(face.schema, { pub: pubKeyPath }),
+        validate(face.schema, { pub: pubKeyPath }, mapArgErrors),
       ).rejects.toThrow("Can't read public key, probably data is corrupted.");
     });
   });
@@ -60,8 +56,14 @@ describe("validation", () => {
       const { publicKey } = await generatePair();
       await fs.writeFile(pubKeyPath, keyToPem(publicKey));
       await expect(async () =>
-        validate(face.schema, { pub: pubKeyPath, input: "non-existent" }),
-      ).rejects.toThrow('At "input": Path "non-existent" does not exist.');
+        validate(
+          face.schema,
+          { pub: pubKeyPath, input: "non-existent" },
+          mapArgErrors,
+        ),
+      ).rejects.toThrow(
+        'Arg "input" error: Path "non-existent" does not exist.',
+      );
     });
 
     test("target is a directory", async () => {
@@ -71,8 +73,12 @@ describe("validation", () => {
       const dirPath = "path/to/dir";
       await fs.mkdir(dirPath, { recursive: true });
       await expect(async () =>
-        validate(face.schema, { pub: pubKeyPath, input: dirPath }),
-      ).rejects.toThrow('At "input": File "path/to/dir" is not a file.');
+        validate(
+          face.schema,
+          { pub: pubKeyPath, input: dirPath },
+          mapArgErrors,
+        ),
+      ).rejects.toThrow('Arg "input" error: File "path/to/dir" is not a file.');
     });
   });
 
@@ -83,10 +89,14 @@ describe("validation", () => {
     const inputToEncrypt = "input to encrypt";
     await fs.writeFile(pubKeyPath, keyToPem(publicKey));
     await fs.writeFile(inputPath, inputToEncrypt);
-    const { publicKey: parsedPublicKey, input } = await validate(face.schema, {
-      pub: pubKeyPath,
-      input: inputPath,
-    });
+    const { publicKey: parsedPublicKey, input } = await validate(
+      face.schema,
+      {
+        pub: pubKeyPath,
+        input: inputPath,
+      },
+      mapArgErrors,
+    );
     expect(keyToPem(publicKey)).toEqual(keyToPem(parsedPublicKey));
     expect(input).toEqual(inputToEncrypt);
   });
@@ -121,7 +131,10 @@ describe("encryption", () => {
         <face.Component input={textToEncrypt} publicKey={publicKey} />,
       );
       const [, ...encryptedText] = lastFrameLines();
-      const encryptedData = deserializeEncryptedData(encryptedText.join(""));
+      const encryptedData = await validate(
+        encryptedBoxSchema,
+        encryptedText.join(""),
+      );
       await expect
         .poll(lastFrameLines)
         .toEqual(["Encryption result:", ...encryptedText]);
@@ -143,7 +156,10 @@ describe("encryption", () => {
         .toEqual(["Please input text to encrypt:", chalk.red("(no input)")]);
       await stdin.writeLn(textToEncrypt);
       const [, ...encryptedText] = lastFrameLines();
-      const encryptedData = deserializeEncryptedData(encryptedText.join(""));
+      const encryptedData = await validate(
+        encryptedBoxSchema,
+        encryptedText.join(""),
+      );
       await expect
         .poll(lastFrameLines)
         .toEqual(["Encryption result:", ...encryptedText]);
@@ -171,7 +187,8 @@ describe("encryption", () => {
       await expect
         .poll(() => lastFrameLines().at(0))
         .toEqual("Encryption result:");
-      const encryptedData = deserializeEncryptedData(
+      const encryptedData = await validate(
+        encryptedBoxSchema,
         lastFrameLines().slice(1).join(""),
       );
       expect(decryptText(encryptedData, privateKey)).toEqual(textToEncrypt);
@@ -208,7 +225,7 @@ describe("encryption", () => {
       await stdin.writeLn("lice");
       await stdin.writeLn("Bob");
       const actual = lastFrameLines().slice(1).join("");
-      const encryptedData = deserializeEncryptedData(actual);
+      const encryptedData = await validate(encryptedBoxSchema, actual);
       expect(decryptText(encryptedData, privateKey)).toEqual(
         textToEncrypt
           .replace("<% enter your name %>", "Alice")

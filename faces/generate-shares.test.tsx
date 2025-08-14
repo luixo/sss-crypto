@@ -7,14 +7,14 @@ import chalk from "chalk";
 import { face } from "./generate-shares";
 import { render } from "../utils/render";
 import { decryptText, encryptText, parsePublicKey } from "../utils/crypto";
-import { deserializeShare } from "../utils/shares";
+import { shareObjectSchema } from "../utils/shares";
 import {
   PUBLIC_KEY_LENGTH,
   SHARE_LENGTH,
   SHARE_PREFIX_LENGTH,
 } from "../utils/consts";
 import { sharesToPrivateKey } from "../utils/converters";
-import { validate } from "../utils/validation";
+import { mapArgErrors, validate } from "../utils/validation";
 
 type Props = React.ComponentProps<(typeof face)["Component"]>;
 
@@ -28,11 +28,13 @@ const getWithValid = (override: Partial<Record<string, string>> = {}) => ({
 describe("validation", () => {
   test("threshold", async () => {
     await expect(async () =>
-      validate(face.schema, getWithValid({ threshold: "a" })),
+      validate(face.schema, getWithValid({ threshold: "a" }), mapArgErrors),
     ).rejects.toThrow(
-      'At "threshold": Invalid input: expected number, received NaN',
+      'Arg "threshold" error: Invalid input: expected number, received NaN',
     );
-    expect(await validate(face.schema, getWithValid())).toEqual<Props>({
+    expect(
+      await validate(face.schema, getWithValid(), mapArgErrors),
+    ).toEqual<Props>({
       threshold: 2,
       shares: 10,
       pubKeyFilePath: "pub.key",
@@ -41,15 +43,19 @@ describe("validation", () => {
 
   test("shares", async () => {
     await expect(async () =>
-      validate(face.schema, getWithValid({ shares: "a" })),
+      validate(face.schema, getWithValid({ shares: "a" }), mapArgErrors),
     ).rejects.toThrow(
-      'At "shares": Invalid input: expected number, received NaN',
+      'Arg "shares" error: Invalid input: expected number, received NaN',
     );
     await expect(async () =>
-      validate(face.schema, getWithValid({ threshold: "3", shares: "3" })),
-    ).rejects.toThrow(`At "<root>": 'k' should be less than 'n'`);
+      validate(
+        face.schema,
+        getWithValid({ threshold: "3", shares: "3" }),
+        mapArgErrors,
+      ),
+    ).rejects.toThrow(`Arg "<root>" error: 'k' should be less than 'n'`);
     expect(
-      await validate(face.schema, getWithValid({ shares: "3" })),
+      await validate(face.schema, getWithValid({ shares: "3" }), mapArgErrors),
     ).toEqual<Props>({
       threshold: 2,
       shares: 3,
@@ -61,22 +67,34 @@ describe("validation", () => {
     const dirPath = "path/to/dir";
     fs.mkdir(dirPath, { recursive: true });
     await expect(async () =>
-      validate(face.schema, getWithValid({ pubOutput: dirPath })),
+      validate(face.schema, getWithValid({ pubOutput: dirPath }), mapArgErrors),
     ).rejects.toThrow("Public key path should not be a directory.");
     const outsideDirPath = "../foo.key";
     await expect(async () =>
-      validate(face.schema, getWithValid({ pubOutput: outsideDirPath })),
+      validate(
+        face.schema,
+        getWithValid({ pubOutput: outsideDirPath }),
+        mapArgErrors,
+      ),
     ).rejects.toThrow("Public key only can be written in a current directory.");
     await fs.writeFile("pub2.key", "output");
     expect(
-      await validate(face.schema, getWithValid({ pubOutput: "pub2.key" })),
+      await validate(
+        face.schema,
+        getWithValid({ pubOutput: "pub2.key" }),
+        mapArgErrors,
+      ),
     ).toEqual<Props>({
       threshold: 2,
       shares: 10,
       pubKeyFilePath: "pub2.key",
     });
     expect(
-      await validate(face.schema, getWithValid({ pubOutput: undefined })),
+      await validate(
+        face.schema,
+        getWithValid({ pubOutput: undefined }),
+        mapArgErrors,
+      ),
     ).toEqual<Props>({
       threshold: 2,
       shares: 10,
@@ -212,7 +230,11 @@ describe("shares generation", () => {
     const decryptedText = decryptText(
       encryptedData,
       sharesToPrivateKey(
-        await Promise.all(serializedShares.map(deserializeShare)),
+        await Promise.all(
+          serializedShares.map(async (share) =>
+            validate(shareObjectSchema, share),
+          ),
+        ),
       ),
     );
     expect(textToEncrypt).toEqual(decryptedText);

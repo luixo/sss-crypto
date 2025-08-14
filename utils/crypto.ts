@@ -1,5 +1,6 @@
 import * as crypto from "node:crypto";
 import { promisify } from "node:util";
+import z from "zod";
 import { sanitizeBase64 } from "./encoding";
 
 const symmetricEncryptionBytes = 256 as const;
@@ -35,60 +36,75 @@ export const parsePrivateKey = (data: Buffer): crypto.KeyObject =>
 const getBase64ByteLength = (initialBytes: number) =>
   Math.ceil(initialBytes / 3) * 4;
 
-export const deserializeEncryptedData = (encryptedBox: string) => {
-  const [tag, initVector, authTag, encryptedAesKey, encryptedText, ...rest] =
-    encryptedBox.split("|").map((element) => element.replaceAll(/\s/g, ""));
-  if (!tag || tag !== brandingTag) {
-    throw new Error(
-      `Data is invalid, expected data with "${brandingTag}" prefix.`,
-    );
-  }
-  if (!initVector) {
-    throw new Error("No initial vector on decryption.");
-  }
-  const initialVectorLength = getBase64ByteLength(initVectorBytes);
-  if (initVector.length !== initialVectorLength) {
-    throw new Error(
-      `Initial vector has to have length of ${initialVectorLength} bytes.`,
-    );
-  }
-  if (!authTag) {
-    throw new Error("No auth tag on decryption.");
-  }
-  const authTagLength = getBase64ByteLength(authTagBytes);
-  if (authTag.length !== authTagLength) {
-    throw new Error(`Auth tag has to have length of ${authTagLength} bytes.`);
-  }
-  if (!encryptedAesKey) {
-    throw new Error("No RSA encrypted key on decryption.");
-  }
-  const aesKeyLength = getBase64ByteLength(symmetricEncryptionBytes);
-  if (encryptedAesKey.length !== aesKeyLength) {
-    throw new Error(
-      `Encrypted AES key has to have length of ${aesKeyLength} bytes.`,
-    );
-  }
-  if (!encryptedText) {
-    throw new Error("No text to decrypt on decryption.");
-  }
-  if (rest.length > 0) {
-    throw new Error("Extra data on decryption.");
-  }
-  return {
-    authTag: sanitizeBase64(authTag),
-    initVector: sanitizeBase64(initVector),
-    encryptedText: sanitizeBase64(encryptedText),
-    encryptedAesKey: sanitizeBase64(encryptedAesKey),
-  };
-};
-export type EncryptedData = ReturnType<typeof deserializeEncryptedData>;
+const initialVectorLength = getBase64ByteLength(initVectorBytes);
+const authTagLength = getBase64ByteLength(authTagBytes);
+const aesKeyLength = getBase64ByteLength(symmetricEncryptionBytes);
+export const encryptedBoxSchema = z
+  .string()
+  .regex(/^.*\|.*\|.*\|.*\|.*$/, {
+    error: "Encrypted box format is incorrect",
+  })
+  .transform((box) => {
+    const [
+      tag = "",
+      initVector = "",
+      authTag = "",
+      encryptedAesKey = "",
+      encryptedText = "",
+      ...rest
+    ] = box.split("|").map((element) => element.replaceAll(/\s/g, ""));
+    return {
+      tag: tag as typeof brandingTag,
+      initVector,
+      authTag,
+      encryptedAesKey,
+      encryptedText,
+      extra: rest.join("|"),
+    };
+  })
+  .pipe(
+    z.object({
+      tag: z.literal(brandingTag, {
+        error: `Data is invalid, expected data with "${brandingTag}" prefix.`,
+      }),
+      initVector: z
+        .string()
+        .length(initialVectorLength, {
+          error: `Initial vector has to have length of ${initialVectorLength} bytes.`,
+        })
+        .refine(sanitizeBase64),
+      authTag: z
+        .string()
+        .length(initialVectorLength, {
+          error: `Auth tag has to have length of ${authTagLength} bytes.`,
+        })
+        .refine(sanitizeBase64),
+      encryptedAesKey: z
+        .string()
+        .length(aesKeyLength, {
+          error: `Encrypted AES key has to have length of ${aesKeyLength} bytes.`,
+        })
+        .refine(sanitizeBase64),
+      encryptedText: z
+        .string()
+        .min(getBase64ByteLength(1), {
+          error: `No text to decrypt on decryption.`,
+        })
+        .refine(sanitizeBase64),
+      extra: z.string().refine((value) => value.length === 0, {
+        error: "Extra data on decryption.",
+      }),
+    }),
+  );
+
 export const serializeEncryptedData = ({
+  tag,
   authTag,
   initVector,
   encryptedAesKey,
   encryptedText,
-}: EncryptedData) =>
-  [brandingTag, initVector, authTag, encryptedAesKey, encryptedText].join("|");
+}: z.output<typeof encryptedBoxSchema>) =>
+  [tag, initVector, authTag, encryptedAesKey, encryptedText].join("|");
 
 const cipherSymmetric = ({
   key,
@@ -137,7 +153,7 @@ const decipherSymmetric = ({
 export const encryptText = (
   dataToEncrypt: string,
   publicKey: crypto.KeyObject,
-): EncryptedData => {
+): z.output<typeof encryptedBoxSchema> => {
   const symmetricKey = crypto.randomBytes(symmetricEncryptionBytes / 8);
   const initVector = crypto.randomBytes(initVectorBytes);
   const encryptedAesKey = crypto.publicEncrypt(
@@ -154,15 +170,22 @@ export const encryptText = (
     dataToEncrypt,
   });
   return {
+    tag: "sss-enc",
     authTag: authTag.toString("base64"),
     initVector: initVector.toString("base64"),
     encryptedAesKey: encryptedAesKey.toString("base64"),
     encryptedText: encryptedText.toString("base64"),
+    extra: "",
   };
 };
 
 export const decryptText = (
-  { encryptedAesKey, encryptedText, initVector, authTag }: EncryptedData,
+  {
+    encryptedAesKey,
+    encryptedText,
+    initVector,
+    authTag,
+  }: z.output<typeof encryptedBoxSchema>,
   privateKey: crypto.KeyObject,
 ) => {
   const symmetricKey = crypto.privateDecrypt(

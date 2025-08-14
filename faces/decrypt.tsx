@@ -2,8 +2,7 @@ import * as React from "react";
 import { Text, Box, Newline } from "ink";
 import z from "zod";
 import type { ShareObject } from "../utils/shares";
-import type { EncryptedData } from "../utils/crypto";
-import { decryptText, deserializeEncryptedData } from "../utils/crypto";
+import { decryptText, encryptedBoxSchema } from "../utils/crypto";
 import type { Face } from "./types";
 import { useKeepAlive } from "../hooks/use-keep-alive";
 import { SharesInput } from "../components/shares-input";
@@ -12,7 +11,7 @@ import { sharesToPrivateKey } from "../utils/converters";
 import { existingFileSchema } from "../utils/schemas";
 
 const getDecryptedText = (
-  encryptedData: EncryptedData,
+  encryptedData: z.infer<typeof encryptedBoxSchema>,
   shares: ShareObject[],
 ): string => {
   const privateKey = sharesToPrivateKey(shares);
@@ -45,7 +44,7 @@ const getDecryptedText = (
 };
 
 type Props = {
-  encryptedData: EncryptedData;
+  encryptedData: z.infer<typeof encryptedBoxSchema>;
 };
 
 type Stage =
@@ -114,18 +113,8 @@ const schema = z
       .refine((input) => input.length > 0, {
         error: "Input should not be empty to decrypt.",
       })
-      .transform((input, ctx) => {
-        try {
-          return deserializeEncryptedData(input.toString());
-        } catch (e) {
-          ctx.issues.push({
-            code: "custom",
-            message: String(e),
-            input,
-          });
-          return z.NEVER;
-        }
-      }),
+      .transform((input) => input.toString())
+      .pipe(encryptedBoxSchema),
   })
   .transform(({ input }) => ({ encryptedData: input }));
 

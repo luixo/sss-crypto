@@ -1,26 +1,29 @@
 import * as React from "react";
 import chalk from "chalk";
+import type z from "zod";
 import { sanitizeBase64 } from "../utils/encoding";
 import type { Props as InputProps } from "./input";
 import { Input } from "./input";
+import { validate } from "../utils/validation";
+
+type ValidationProps<I, O> = {
+  schema: z.ZodType<O, I>;
+  onDone: (input: O) => void;
+};
 
 export const HiddenInput: React.FC<
-  Omit<InputProps, "onEnter"> & {
-    validator: (input: string) => unknown;
-    onDone: (input: string) => void;
-  }
-> = ({ validator, onDone, ...props }) => {
+  Omit<InputProps, "onEnter"> & ValidationProps<unknown, unknown>
+> = ({ schema, onDone, ...props }) => {
   const [error, setError] = React.useState<string>();
   const onEnterRaw = React.useCallback(
     async (input: string) => {
       try {
-        await validator(input);
-        onDone(input);
+        onDone(await validate(schema, input));
       } catch (e) {
         setError(String(e));
       }
     },
-    [onDone, validator],
+    [onDone, schema],
   );
   const onKeystroke = React.useCallback<
     NonNullable<React.ComponentProps<typeof Input>["onKeystroke"]>

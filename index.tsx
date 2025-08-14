@@ -8,7 +8,7 @@ import { face as encryptFace } from "./faces/encrypt";
 import { face as decryptFace } from "./faces/decrypt";
 import { face as addShareFace } from "./faces/add-share";
 import type { Face } from "./faces/types";
-import { validate } from "./utils/validation";
+import { mapArgErrors, validate } from "./utils/validation";
 
 import {
   fileSchema,
@@ -23,13 +23,13 @@ const stdType = <S extends StandardSchemaV1>(
 ): Type<string, StandardSchemaV1.InferOutput<S>> => ({
   displayName,
   description: "validated via Standard Schema",
-  from: async (input) => validate(schema, input),
+  from: async (input) => validate(schema, input, mapArgErrors),
 });
 
 const handleFace =
   <P extends object, I extends object>(face: Face<P, I>) =>
   async (input: I) => {
-    const props = await validate(face.schema, input);
+    const props = await validate(face.schema, input, mapArgErrors);
     const instance = render(<face.Component {...props} />);
     return instance.waitUntilExit();
   };
