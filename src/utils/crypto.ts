@@ -41,9 +41,12 @@ const authTagLength = getBase64ByteLength(authTagBytes);
 const aesKeyLength = getBase64ByteLength(symmetricEncryptionBytes);
 export const encryptedBoxSchema = z
   .string()
-  .regex(/^.*\|.*\|.*\|.*\|.*$/, {
-    error: "Encrypted box format is incorrect",
-  })
+  .transform((lines) => lines.replaceAll(/\s/g, ""))
+  .pipe(
+    z.string().regex(/^.*\|.*\|.*\|.*\|.*$/, {
+      error: "Encrypted box format is incorrect",
+    }),
+  )
   .transform((box) => {
     const [
       tag = "",
@@ -72,25 +75,25 @@ export const encryptedBoxSchema = z
         .length(initialVectorLength, {
           error: `Initial vector has to have length of ${initialVectorLength} bytes.`,
         })
-        .refine(sanitizeBase64),
+        .transform(sanitizeBase64),
       authTag: z
         .string()
         .length(initialVectorLength, {
           error: `Auth tag has to have length of ${authTagLength} bytes.`,
         })
-        .refine(sanitizeBase64),
+        .transform(sanitizeBase64),
       encryptedAesKey: z
         .string()
         .length(aesKeyLength, {
           error: `Encrypted AES key has to have length of ${aesKeyLength} bytes.`,
         })
-        .refine(sanitizeBase64),
+        .transform(sanitizeBase64),
       encryptedText: z
         .string()
         .min(getBase64ByteLength(1), {
           error: `No text to decrypt on decryption.`,
         })
-        .refine(sanitizeBase64),
+        .transform(sanitizeBase64),
       extra: z.string().refine((value) => value.length === 0, {
         error: "Extra data on decryption.",
       }),

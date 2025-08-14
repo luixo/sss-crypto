@@ -5,13 +5,19 @@ import { SHARE_LENGTH } from "./consts";
 
 export const shareObjectSchema = z
   .string()
-  .regex(/^\d+\|\d+\|[0-9a-f]+\|[a-zA-Z0-9+=/]*$/, {
-    error: "Share format is incorrect",
-  })
-  .transform((input) => {
-    const [threshold = "", bits = "", id = "", data = ""] = input.split("|");
-    return { threshold, bits, id, data };
-  })
+  .transform((lines) => lines.replaceAll(/\s/g, ""))
+  .pipe(
+    z
+      .string()
+      .regex(/^\d+\|\d+\|[0-9a-f]+\|[a-zA-Z0-9+=/]*$/, {
+        error: "Share format is incorrect",
+      })
+      .transform((input) => {
+        const [threshold = "", bits = "", id = "", data = ""] =
+          input.split("|");
+        return { threshold, bits, id, data };
+      }),
+  )
   .pipe(
     z
       .object({
