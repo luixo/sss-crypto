@@ -1,11 +1,11 @@
-import { Key, Text, useInput } from "ink";
+import type { Key } from "ink";
+import { Text, useInput } from "ink";
 import * as React from "react";
 
 export type Props = {
   initialValue?: string;
   onArrow?: (type: "left" | "right", text: string) => void;
   onEnter?: (text: string) => void;
-  onBackspace?: (text: string) => void;
   onKeystroke?: (stroke: string, key: Key) => void;
   formatValue?: (value: string) => string;
   parseInput?: (value: string) => string;

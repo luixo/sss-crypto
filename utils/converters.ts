@@ -1,11 +1,7 @@
-import * as crypto from "node:crypto";
+import type * as crypto from "node:crypto";
 import { parsePrivateKey } from "./crypto";
-import {
-  combineShares,
-  createShares,
-  ShareObject,
-  SharesOptions,
-} from "./shares";
+import type { ShareObject, SharesOptions } from "./shares";
+import { combineShares, generateShares } from "./shares";
 import { keyToHex } from "./encoding";
 
 export const sharesToPrivateKey = (shares: ShareObject[]): crypto.KeyObject => {
@@ -25,7 +21,7 @@ export const sharesToPrivateKey = (shares: ShareObject[]): crypto.KeyObject => {
   }
 };
 
-export const privateKeyToShares = (
+export const generateSharesFromKey = (
   privateKey: crypto.KeyObject,
   options: SharesOptions,
-): ShareObject[] => createShares(keyToHex(privateKey), options);
+): ShareObject[] => generateShares(keyToHex(privateKey), options);

@@ -1,3 +1,4 @@
+import type { CoverageReporter } from "vitest/node";
 import { configDefaults, defineConfig } from "vitest/config";
 
 export default defineConfig({
@@ -6,7 +7,10 @@ export default defineConfig({
     coverage: {
       all: true,
       enabled: true,
-      reporter: [...(configDefaults.coverage.reporter || []), "json-summary"],
+      reporter: [
+        ...(configDefaults.coverage.reporter as CoverageReporter[]),
+        "json-summary",
+      ],
     },
     setupFiles: "setup.ts",
   },

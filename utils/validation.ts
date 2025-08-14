@@ -13,7 +13,7 @@ export const validate = async <T extends StandardSchemaV1>(
       result.issues
         .map(
           (issue) =>
-            `At "${issue.path && issue.path.length !== 0 ? issue.path.join(".") : "<root>"}": ${issue.message}`,
+            `At "${issue.path && issue.path.length > 0 ? issue.path.join(".") : "<root>"}": ${issue.message}`,
         )
         .join("\n"),
     );

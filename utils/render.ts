@@ -1,10 +1,9 @@
 import { render as originalRender } from "ink-testing-library";
-import { nextTick as rawNextTick } from "node:process";
 
-const nextTick = () =>
+const nextTick = async () =>
   new Promise<void>((resolve) => {
     // The simplest way to wait out until stdin input is rendered
-    setTimeout(() => rawNextTick(resolve), 10);
+    setTimeout(() => process.nextTick(resolve), 10);
   });
 
 type RenderControls = {
@@ -27,18 +26,18 @@ export const render = async (
     await fn?.();
     await nextTick();
   };
-  const write = (data: string) =>
+  const write = async (data: string) =>
     waitFrame(async () => originalStdin.write(data));
-  const enter = () => write("\r");
-  const backspace = async (amount: number = 1) => {
+  const enter = async () => write("\r");
+  const backspace = async (amount = 1) => {
     await waitFrame(async () => {
       for (let i = 0; i < amount; i += 1) {
         originalStdin.write("\b");
       }
     });
   };
-  const leftArrow = () => write("\x1b[D");
-  const rightArrow = () => write("\x1b[C");
+  const leftArrow = async () => write("\u001B[D");
+  const rightArrow = async () => write("\u001B[C");
   const writeLn = async (data: string) => {
     await write(data);
     await enter();

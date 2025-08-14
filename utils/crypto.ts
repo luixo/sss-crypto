@@ -1,4 +1,5 @@
 import * as crypto from "node:crypto";
+import { promisify } from "node:util";
 import { sanitizeBase64 } from "./encoding";
 
 const symmetricEncryptionBytes = 256 as const;
@@ -10,15 +11,10 @@ const initVectorBytes = 16 as const;
 const authTagBytes = 16 as const;
 const brandingTag = "sss-enc" as const;
 
-export const generatePair = () => {
-  const { publicKey, privateKey } = crypto.generateKeyPairSync(
-    asymmetricEncryptionMethod,
-    {
-      modulusLength: asymmetricEncryptionBytes,
-    },
-  );
-  return { publicKey, privateKey };
-};
+export const generatePair = async () =>
+  promisify(crypto.generateKeyPair)(asymmetricEncryptionMethod, {
+    modulusLength: asymmetricEncryptionBytes,
+  });
 
 export const parsePublicKey = (data: Buffer): crypto.KeyObject =>
   crypto.createPublicKey({
@@ -75,7 +71,7 @@ export const deserializeEncryptedData = (encryptedBox: string) => {
   if (!encryptedText) {
     throw new Error("No text to decrypt on decryption.");
   }
-  if (rest.length !== 0) {
+  if (rest.length > 0) {
     throw new Error("Extra data on decryption.");
   }
   return {

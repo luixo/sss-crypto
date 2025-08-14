@@ -1,6 +1,7 @@
 import * as React from "react";
 import { Text, Box, Newline } from "ink";
-import { deserializeShare, ShareObject } from "../utils/shares";
+import type { ShareObject } from "../utils/shares";
+import { deserializeShare } from "../utils/shares";
 import { useKeepAlive } from "../hooks/use-keep-alive";
 import { HiddenInput } from "./hidden-input";
 
@@ -21,7 +22,7 @@ export const SharesInput: React.FC<Props> = ({ onDone, onError }) => {
         );
         return;
       }
-      setThreshold((prevThreshold) => prevThreshold || share.threshold);
+      setThreshold((prevThreshold) => prevThreshold ?? share.threshold);
       setShares((prevShares) => [...prevShares, share]);
     },
     [threshold, onError],
@@ -35,6 +36,7 @@ export const SharesInput: React.FC<Props> = ({ onDone, onError }) => {
   return (
     <Box flexDirection="column">
       {Array.from({ length: shares.length }).map((_, index) => (
+        // eslint-disable-next-line react/no-array-index-key
         <Box key={index}>
           <Text>Input share #{index + 1} registered.</Text>
         </Box>
@@ -42,7 +44,7 @@ export const SharesInput: React.FC<Props> = ({ onDone, onError }) => {
       <Text>
         <Text>
           Please input share #{shares.length + 1}
-          {!threshold ? "" : ` (out of ${threshold})`}
+          {threshold ? ` (out of ${threshold})` : ""}
         </Text>
         <Newline />
         <HiddenInput

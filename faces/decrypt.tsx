@@ -1,13 +1,10 @@
 import * as React from "react";
 import { Text, Box, Newline } from "ink";
 import z from "zod";
-import { ShareObject } from "../utils/shares";
-import {
-  EncryptedData,
-  decryptText,
-  deserializeEncryptedData,
-} from "../utils/crypto";
-import { Face } from "./types";
+import type { ShareObject } from "../utils/shares";
+import type { EncryptedData } from "../utils/crypto";
+import { decryptText, deserializeEncryptedData } from "../utils/crypto";
+import type { Face } from "./types";
 import { useKeepAlive } from "../hooks/use-keep-alive";
 import { SharesInput } from "../components/shares-input";
 import { useResetKey } from "../hooks/use-reset-key";
@@ -68,6 +65,7 @@ const Decrypt: React.FC<Props> = ({ encryptedData }) => {
       return (
         <SharesInput
           key={sharesKey}
+          onError={(message) => setStage({ type: "error", message })}
           onDone={(shares) => {
             try {
               const decryptedText = getDecryptedText(encryptedData, shares);
@@ -80,7 +78,6 @@ const Decrypt: React.FC<Props> = ({ encryptedData }) => {
               });
             }
           }}
-          onError={(message) => setStage({ type: "error", message })}
         />
       );
     }
@@ -103,7 +100,7 @@ const Decrypt: React.FC<Props> = ({ encryptedData }) => {
             <Newline />
             <Text>{stage.message}</Text>
             <Newline />
-            <Text>Press "Enter" to restart</Text>
+            <Text>{`Press "Enter" to restart`}</Text>
           </Text>
         </Box>
       );

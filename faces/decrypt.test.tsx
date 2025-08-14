@@ -1,12 +1,10 @@
-import React from "react";
-
 import { expect, test, describe } from "vitest";
 import chalk from "chalk";
 import fs from "node:fs/promises";
 
 import { face } from "./decrypt";
+import type { EncryptedData } from "../utils/crypto";
 import {
-  EncryptedData,
   encryptText,
   generatePair,
   serializeEncryptedData,
@@ -15,13 +13,16 @@ import { serializeShare } from "../utils/shares";
 import { render } from "../utils/render";
 import { sequence } from "../utils/promise";
 import { SHARE_LENGTH } from "../utils/consts";
-import { privateKeyToShares } from "../utils/converters";
+import { generateSharesFromKey } from "../utils/converters";
 import { validate } from "../utils/validation";
+
+const replaceFirstSymbol = (input: string) =>
+  `${input.startsWith("x") ? "y" : "x"}${input.slice(1)}`;
 
 describe("validation", () => {
   describe("input file", () => {
     test("file does not exist", async () => {
-      await expect(() =>
+      await expect(async () =>
         validate(face.schema, { input: "non-existent" }),
       ).rejects.toThrow('At "input": Path "non-existent" does not exist.');
     });
@@ -29,7 +30,7 @@ describe("validation", () => {
     test("target is a directory", async () => {
       const dirPath = "path/to/dir";
       await fs.mkdir(dirPath, { recursive: true });
-      await expect(() =>
+      await expect(async () =>
         validate(face.schema, { input: dirPath }),
       ).rejects.toThrow('At "input": File "path/to/dir" is not a file.');
     });
@@ -38,7 +39,7 @@ describe("validation", () => {
       test("no branding tag", async () => {
         const inputPath = "path/to/input.txt";
         await fs.writeFile(inputPath, "x");
-        await expect(() =>
+        await expect(async () =>
           validate(face.schema, { input: inputPath }),
         ).rejects.toThrow(
           `Data is invalid, expected data with "sss-enc" prefix.`,
@@ -47,13 +48,11 @@ describe("validation", () => {
 
       test("invalid branding tag", async () => {
         const inputPath = "path/to/input.txt";
-        const encryptedData = encryptText(
-          "input to encrypt",
-          generatePair().publicKey,
-        );
+        const { publicKey } = await generatePair();
+        const encryptedData = encryptText("input to encrypt", publicKey);
         const serializedData = serializeEncryptedData(encryptedData);
         await fs.writeFile(inputPath, serializedData.slice(1));
-        await expect(() =>
+        await expect(async () =>
           validate(face.schema, { input: inputPath }),
         ).rejects.toThrow(
           `Data is invalid, expected data with "sss-enc" prefix.`,
@@ -62,26 +61,22 @@ describe("validation", () => {
 
       test("no initial vector", async () => {
         const inputPath = "path/to/input.txt";
-        const encryptedData = encryptText(
-          "input to encrypt",
-          generatePair().publicKey,
-        );
+        const { publicKey } = await generatePair();
+        const encryptedData = encryptText("input to encrypt", publicKey);
         const serializedData = serializeEncryptedData(encryptedData);
         await fs.writeFile(
           inputPath,
           serializedData.split("|").slice(0, 1).join("|"),
         );
-        await expect(() =>
+        await expect(async () =>
           validate(face.schema, { input: inputPath }),
         ).rejects.toThrow("No initial vector on decryption.");
       });
 
       test("invalid initial vector length", async () => {
         const inputPath = "path/to/input.txt";
-        const encryptedData = encryptText(
-          "input to encrypt",
-          generatePair().publicKey,
-        );
+        const { publicKey } = await generatePair();
+        const encryptedData = encryptText("input to encrypt", publicKey);
         await fs.writeFile(
           inputPath,
           serializeEncryptedData({
@@ -89,33 +84,29 @@ describe("validation", () => {
             initVector: `${encryptedData.initVector.slice(0, -10)}malformed`,
           }),
         );
-        await expect(() =>
+        await expect(async () =>
           validate(face.schema, { input: inputPath }),
         ).rejects.toThrow("Initial vector has to have length of 24 bytes.");
       });
 
       test("no auth tag", async () => {
         const inputPath = "path/to/input.txt";
-        const encryptedData = encryptText(
-          "input to encrypt",
-          generatePair().publicKey,
-        );
+        const { publicKey } = await generatePair();
+        const encryptedData = encryptText("input to encrypt", publicKey);
         const serializedData = serializeEncryptedData(encryptedData);
         await fs.writeFile(
           inputPath,
           serializedData.split("|").slice(0, 2).join("|"),
         );
-        await expect(() =>
+        await expect(async () =>
           validate(face.schema, { input: inputPath }),
         ).rejects.toThrow("No auth tag on decryption.");
       });
 
       test("invalid auth tag length", async () => {
         const inputPath = "path/to/input.txt";
-        const encryptedData = encryptText(
-          "input to encrypt",
-          generatePair().publicKey,
-        );
+        const { publicKey } = await generatePair();
+        const encryptedData = encryptText("input to encrypt", publicKey);
         await fs.writeFile(
           inputPath,
           serializeEncryptedData({
@@ -123,33 +114,29 @@ describe("validation", () => {
             authTag: `${encryptedData.authTag.slice(0, -10)}malformed`,
           }),
         );
-        await expect(() =>
+        await expect(async () =>
           validate(face.schema, { input: inputPath }),
         ).rejects.toThrow("Auth tag has to have length of 24 bytes.");
       });
 
       test("no symmetric key", async () => {
         const inputPath = "path/to/input.txt";
-        const encryptedData = encryptText(
-          "input to encrypt",
-          generatePair().publicKey,
-        );
+        const { publicKey } = await generatePair();
+        const encryptedData = encryptText("input to encrypt", publicKey);
         const serializedData = serializeEncryptedData(encryptedData);
         await fs.writeFile(
           inputPath,
           serializedData.split("|").slice(0, 3).join("|"),
         );
-        await expect(() =>
+        await expect(async () =>
           validate(face.schema, { input: inputPath }),
         ).rejects.toThrow("No RSA encrypted key on decryption.");
       });
 
       test("invalid symmetric key", async () => {
         const inputPath = "path/to/input.txt";
-        const encryptedData = encryptText(
-          "input to encrypt",
-          generatePair().publicKey,
-        );
+        const { publicKey } = await generatePair();
+        const encryptedData = encryptText("input to encrypt", publicKey);
         await fs.writeFile(
           inputPath,
           serializeEncryptedData({
@@ -157,39 +144,35 @@ describe("validation", () => {
             encryptedAesKey: `${encryptedData.encryptedAesKey.slice(0, -10)}malformed`,
           }),
         );
-        await expect(() =>
+        await expect(async () =>
           validate(face.schema, { input: inputPath }),
         ).rejects.toThrow("Encrypted AES key has to have length of 344 bytes.");
       });
 
       test("no encrypted text", async () => {
         const inputPath = "path/to/input.txt";
-        const encryptedData = encryptText(
-          "input to encrypt",
-          generatePair().publicKey,
-        );
+        const { publicKey } = await generatePair();
+        const encryptedData = encryptText("input to encrypt", publicKey);
         const serializedData = serializeEncryptedData(encryptedData);
         await fs.writeFile(
           inputPath,
           serializedData.split("|").slice(0, 4).join("|"),
         );
-        await expect(() =>
+        await expect(async () =>
           validate(face.schema, { input: inputPath }),
         ).rejects.toThrow("No text to decrypt on decryption.");
       });
 
       test("extra data after delimiter", async () => {
         const inputPath = "path/to/input.txt";
-        const encryptedData = encryptText(
-          "input to encrypt",
-          generatePair().publicKey,
-        );
+        const { publicKey } = await generatePair();
+        const encryptedData = encryptText("input to encrypt", publicKey);
         const serializedData = serializeEncryptedData(encryptedData);
         await fs.writeFile(
           inputPath,
           [...serializedData.split("|"), "extra"].join("|"),
         );
-        await expect(() =>
+        await expect(async () =>
           validate(face.schema, { input: inputPath }),
         ).rejects.toThrow("Extra data on decryption.");
       });
@@ -199,7 +182,8 @@ describe("validation", () => {
   test("successful validation", async () => {
     const inputPath = "path/to/input.txt";
     const inputToDecrypt = "input to encrypt";
-    const encryptedData = encryptText(inputToDecrypt, generatePair().publicKey);
+    const { publicKey } = await generatePair();
+    const encryptedData = encryptText(inputToDecrypt, publicKey);
     await fs.writeFile(inputPath, serializeEncryptedData(encryptedData));
     const props = await validate(face.schema, { input: inputPath });
     expect(props).toEqual<typeof props>({ encryptedData });
@@ -209,13 +193,13 @@ describe("validation", () => {
 describe("decryption", () => {
   describe("errors", () => {
     test("corrupted shares", async () => {
-      const { privateKey, publicKey } = generatePair();
+      const { privateKey, publicKey } = await generatePair();
       const encryptedData = encryptText(
         "Hello world\nNext line please",
         publicKey,
       );
       const threshold = 3;
-      const privateKeyShares = privateKeyToShares(privateKey, {
+      const privateKeyShares = generateSharesFromKey(privateKey, {
         threshold,
         shares: 5,
       }).map((share) => serializeShare(share).replace("|", ""));
@@ -223,7 +207,8 @@ describe("decryption", () => {
       const { lastFrameLines, stdin } = await render(
         <face.Component encryptedData={encryptedData} />,
       );
-      await stdin.writeLn(privateKeyShares[0]);
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+      await stdin.writeLn(privateKeyShares[0]!);
       await expect
         .poll(lastFrameLines)
         .toEqual([
@@ -234,19 +219,19 @@ describe("decryption", () => {
     });
 
     test("invalid shares", async () => {
-      const { privateKey, publicKey } = generatePair();
+      const { privateKey, publicKey } = await generatePair();
       const encryptedData = encryptText(
         "Hello world\nNext line please",
         publicKey,
       );
       const threshold = 3;
-      const privateKeyShares = privateKeyToShares(privateKey, {
+      const privateKeyShares = generateSharesFromKey(privateKey, {
         threshold,
         shares: 5,
       }).map((share) =>
         serializeShare({
           ...share,
-          data: share.data[0] === "a" ? "b" : `a${share.data.slice(1)}`,
+          data: share.data.startsWith("a") ? "b" : `a${share.data.slice(1)}`,
         }),
       );
 
@@ -256,7 +241,7 @@ describe("decryption", () => {
       await sequence(
         ...privateKeyShares
           .slice(0, threshold)
-          .map((share) => () => stdin.writeLn(share)),
+          .map((share) => async () => stdin.writeLn(share)),
       );
       await expect
         .poll(lastFrameLines)
@@ -276,13 +261,13 @@ describe("decryption", () => {
         modifyData: (data: EncryptedData) => EncryptedData,
         message: string,
       ) => {
-        const { privateKey, publicKey } = generatePair();
+        const { privateKey, publicKey } = await generatePair();
         const encryptedData = encryptText(
           "Hello world\nNext line please",
           publicKey,
         );
         const threshold = 3;
-        const privateKeyShares = privateKeyToShares(privateKey, {
+        const privateKeyShares = generateSharesFromKey(privateKey, {
           threshold,
           shares: 5,
         }).map(serializeShare);
@@ -293,15 +278,12 @@ describe("decryption", () => {
         await sequence(
           ...privateKeyShares
             .slice(0, threshold)
-            .map((share) => () => stdin.writeLn(share)),
+            .map((share) => async () => stdin.writeLn(share)),
         );
         await expect
           .poll(lastFrameLines)
           .toEqual(["Fatal error:", message, 'Press "Enter" to restart']);
       };
-
-      const replaceFirstSymbol = (input: string) =>
-        `${input[0] === "x" ? "y" : "x"}${input.slice(1)}`;
 
       test("initial vector malformed", async () => {
         await runWith(
@@ -335,13 +317,13 @@ describe("decryption", () => {
     });
 
     test("malformed share format", async () => {
-      const { privateKey, publicKey } = generatePair();
+      const { privateKey, publicKey } = await generatePair();
       const encryptedData = encryptText(
         "Hello world\nNext line please",
         publicKey,
       );
       const threshold = 3;
-      const privateKeyShares = privateKeyToShares(privateKey, {
+      const privateKeyShares = generateSharesFromKey(privateKey, {
         threshold,
         shares: 5,
       }).map((share) => {
@@ -352,33 +334,29 @@ describe("decryption", () => {
       const { lastFrameLines, stdin } = await render(
         <face.Component encryptedData={encryptedData} />,
       );
-      await stdin.writeLn(privateKeyShares[0]);
-      await expect
-        .poll(lastFrameLines)
-        .toEqual([
-          "Please input share #1",
-          chalk.green(`(input of length ${privateKeyShares[0].length - 1})`),
-          chalk.red(
-            `Error: At "data": Expected to have base64 for a share body`,
-          ),
-          chalk.red(
-            `At "data": Expected to have 1600 symbols for a share body`,
-          ),
-        ]);
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+      await stdin.writeLn(privateKeyShares[0]!);
+      await expect.poll(lastFrameLines).toEqual([
+        "Please input share #1",
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+        chalk.green(`(input of length ${privateKeyShares[0]!.length - 1})`),
+        chalk.red(`Error: At "data": Expected to have base64 for a share body`),
+        chalk.red(`At "data": Expected to have 1600 symbols for a share body`),
+      ]);
       await stdin.backspace();
-      await expect
-        .poll(lastFrameLines)
-        .toEqual([
-          "Please input share #1",
-          chalk.green(`(input of length ${privateKeyShares[0].length - 2})`),
-        ]);
+      await expect.poll(lastFrameLines).toEqual([
+        "Please input share #1",
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+        chalk.green(`(input of length ${privateKeyShares[0]!.length - 2})`),
+      ]);
     });
 
     describe("incorrent share format", () => {
       test("some delimiters", async () => {
+        const { publicKey } = await generatePair();
         const encryptedData = encryptText(
           "Hello world\nNext line please",
-          generatePair().publicKey,
+          publicKey,
         );
         const { lastFrameLines, stdin } = await render(
           <face.Component encryptedData={encryptedData} />,
@@ -395,9 +373,10 @@ describe("decryption", () => {
       });
 
       test("no delimiters", async () => {
+        const { publicKey } = await generatePair();
         const encryptedData = encryptText(
           "Hello world\nNext line please",
-          generatePair().publicKey,
+          publicKey,
         );
         const { lastFrameLines, stdin } = await render(
           <face.Component encryptedData={encryptedData} />,
@@ -415,12 +394,12 @@ describe("decryption", () => {
     });
 
     test("mixed thresholds in shares", async () => {
-      const { privateKey, publicKey } = generatePair();
+      const { privateKey, publicKey } = await generatePair();
       const encryptedData = encryptText(
         "Hello world\nNext line please",
         publicKey,
       );
-      const privateKeyShares = privateKeyToShares(privateKey, {
+      const privateKeyShares = generateSharesFromKey(privateKey, {
         threshold: 3,
         shares: 5,
       }).map((share, index) =>
@@ -430,8 +409,10 @@ describe("decryption", () => {
       const { lastFrameLines, stdin } = await render(
         <face.Component encryptedData={encryptedData} />,
       );
-      await stdin.writeLn(privateKeyShares[0]);
-      await stdin.writeLn(privateKeyShares[1]);
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+      await stdin.writeLn(privateKeyShares[0]!);
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+      await stdin.writeLn(privateKeyShares[1]!);
       await expect
         .poll(lastFrameLines)
         .toEqual([
@@ -443,14 +424,15 @@ describe("decryption", () => {
   });
 
   test("input length properly displayed", async () => {
+    const { publicKey } = await generatePair();
     const encryptedData = encryptText(
       "Hello world\nNext line please",
-      generatePair().publicKey,
+      publicKey,
     );
     const { lastFrameLines, stdin } = await render(
       <face.Component encryptedData={encryptedData} />,
     );
-    const expectLastLine = (lastLine: string) =>
+    const expectLastLine = async (lastLine: string) =>
       expect.poll(lastFrameLines).toEqual(["Please input share #1", lastLine]);
 
     await expectLastLine(chalk.red("(no input)"));
@@ -468,9 +450,10 @@ describe("decryption", () => {
   });
 
   test("threshold calculated from data properly", async () => {
+    const { publicKey } = await generatePair();
     const encryptedData = encryptText(
       "Hello world\nNext line please",
-      generatePair().publicKey,
+      publicKey,
     );
     const threshold = 2 + Math.floor(Math.random() * 100);
     const { lastFrameLines, stdin } = await render(
@@ -494,16 +477,17 @@ describe("decryption", () => {
   });
 
   test("shares registration displayed properly", async () => {
+    const { publicKey } = await generatePair();
     const encryptedData = encryptText(
       "Hello world\nNext line please",
-      generatePair().publicKey,
+      publicKey,
     );
     const threshold = 5 + Math.floor(Math.random() * 10);
     const { lastFrameLines, stdin } = await render(
       <face.Component encryptedData={encryptedData} />,
     );
     await sequence(
-      ...new Array(threshold - 1).fill(null).map((_, index) => async () => {
+      ...Array.from({ length: threshold - 1 }).map((_, index) => async () => {
         await stdin.writeLn(
           serializeShare({
             threshold,
@@ -517,12 +501,9 @@ describe("decryption", () => {
         await expect
           .poll(lastFrameLines)
           .toEqual([
-            ...new Array(index + 1)
-              .fill(null)
-              .map(
-                (__, shareIndex) =>
-                  `Input share #${shareIndex + 1} registered.`,
-              ),
+            ...Array.from({ length: index + 1 }).map(
+              (__, shareIndex) => `Input share #${shareIndex + 1} registered.`,
+            ),
             `Please input share #${index + 2} (out of ${threshold})`,
             chalk.red("(no input)"),
           ]);
@@ -532,10 +513,10 @@ describe("decryption", () => {
 
   test("decryption handled successfully", async () => {
     const textToEncrypt = "Hello world\nNext line please";
-    const { privateKey, publicKey } = generatePair();
+    const { privateKey, publicKey } = await generatePair();
     const encryptedData = encryptText(textToEncrypt, publicKey);
     const threshold = 3;
-    const privateKeyShares = privateKeyToShares(privateKey, {
+    const privateKeyShares = generateSharesFromKey(privateKey, {
       threshold,
       shares: 5,
     }).map(serializeShare);
@@ -546,7 +527,7 @@ describe("decryption", () => {
     await sequence(
       ...privateKeyShares
         .slice(0, threshold)
-        .map((privateKeyShare) => () => stdin.writeLn(privateKeyShare)),
+        .map((privateKeyShare) => async () => stdin.writeLn(privateKeyShare)),
     );
     await expect
       .poll(lastFrameLines)

@@ -1,8 +1,9 @@
 import * as React from "react";
 import { Text, Box, Newline } from "ink";
 import z from "zod";
-import { ShareObject, addShare } from "../utils/shares";
-import { Face } from "./types";
+import type { ShareObject } from "../utils/shares";
+import { addShare } from "../utils/shares";
+import type { Face } from "./types";
 import { useKeepAlive } from "../hooks/use-keep-alive";
 import { SharesInput } from "../components/shares-input";
 import { SaveDataWarning } from "../components/save-data-warning";
@@ -37,6 +38,7 @@ const AddShare: React.FC = () => {
       return (
         <SharesInput
           key={sharesKey}
+          onError={(message) => setStage({ type: "error", message })}
           onDone={(shares) => {
             try {
               setStage({ type: "result", result: getNewShare(shares) });
@@ -48,7 +50,6 @@ const AddShare: React.FC = () => {
               });
             }
           }}
-          onError={(message) => setStage({ type: "error", message })}
         />
       );
     }
@@ -69,7 +70,7 @@ const AddShare: React.FC = () => {
             <Newline />
             <Text>{stage.message}</Text>
             <Newline />
-            <Text>Press "Enter" to restart</Text>
+            <Text>{`Press "Enter" to restart`}</Text>
           </Text>
         </Box>
       );

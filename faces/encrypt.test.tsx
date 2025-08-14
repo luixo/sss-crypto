@@ -1,5 +1,3 @@
-import React from "react";
-
 import { expect, test, describe } from "vitest";
 import fs from "node:fs/promises";
 import chalk from "chalk";
@@ -33,7 +31,7 @@ const withBox = (text: string, width: number) => [
 describe("validation", () => {
   describe("pub key file", () => {
     test("file does not exist", async () => {
-      await expect(() =>
+      await expect(async () =>
         validate(face.schema, { pub: "non-existent" }),
       ).rejects.toThrow('At "pub": Path "non-existent" does not exist.');
     });
@@ -41,7 +39,7 @@ describe("validation", () => {
     test("target is a directory", async () => {
       const dirPath = "path/to/dir";
       fs.mkdir(dirPath, { recursive: true });
-      await expect(() =>
+      await expect(async () =>
         validate(face.schema, { pub: dirPath }),
       ).rejects.toThrow('At "pub": File "path/to/dir" is not a file.');
     });
@@ -50,7 +48,7 @@ describe("validation", () => {
       const publicKeyData = "This is not a public key";
       const pubKeyPath = "path/to/pub.key";
       await fs.writeFile(pubKeyPath, publicKeyData);
-      await expect(() =>
+      await expect(async () =>
         validate(face.schema, { pub: pubKeyPath }),
       ).rejects.toThrow("Can't read public key, probably data is corrupted.");
     });
@@ -59,27 +57,27 @@ describe("validation", () => {
   describe("input file", () => {
     test("file does not exist", async () => {
       const pubKeyPath = "path/to/pub.key";
-      const { publicKey } = generatePair();
+      const { publicKey } = await generatePair();
       await fs.writeFile(pubKeyPath, keyToPem(publicKey));
-      await expect(() =>
+      await expect(async () =>
         validate(face.schema, { pub: pubKeyPath, input: "non-existent" }),
       ).rejects.toThrow('At "input": Path "non-existent" does not exist.');
     });
 
     test("target is a directory", async () => {
       const pubKeyPath = "path/to/pub.key";
-      const { publicKey } = generatePair();
+      const { publicKey } = await generatePair();
       await fs.writeFile(pubKeyPath, keyToPem(publicKey));
       const dirPath = "path/to/dir";
       await fs.mkdir(dirPath, { recursive: true });
-      await expect(() =>
+      await expect(async () =>
         validate(face.schema, { pub: pubKeyPath, input: dirPath }),
       ).rejects.toThrow('At "input": File "path/to/dir" is not a file.');
     });
   });
 
   test("successful validation", async () => {
-    const { publicKey } = generatePair();
+    const { publicKey } = await generatePair();
     const pubKeyPath = "path/to/pub.key";
     const inputPath = "path/to/input.txt";
     const inputToEncrypt = "input to encrypt";
@@ -96,12 +94,12 @@ describe("validation", () => {
 
 describe("encryption", () => {
   test("input properly displayed", async () => {
-    const { publicKey } = generatePair();
+    const { publicKey } = await generatePair();
     const { lastFrameLines, stdin } = await render(
       <face.Component publicKey={publicKey} />,
     );
 
-    const expectLastLine = (lastLine: string) =>
+    const expectLastLine = async (lastLine: string) =>
       expect
         .poll(lastFrameLines)
         .toEqual(["Please input text to encrypt:", lastLine]);
@@ -118,9 +116,9 @@ describe("encryption", () => {
   describe("text is encrypted", () => {
     test("provided externally", async () => {
       const textToEncrypt = "Hello world";
-      const { publicKey, privateKey } = generatePair();
+      const { publicKey, privateKey } = await generatePair();
       const { lastFrameLines } = await render(
-        <face.Component publicKey={publicKey} input={textToEncrypt} />,
+        <face.Component input={textToEncrypt} publicKey={publicKey} />,
       );
       const [, ...encryptedText] = lastFrameLines();
       const encryptedData = deserializeEncryptedData(encryptedText.join(""));
@@ -132,7 +130,7 @@ describe("encryption", () => {
 
     test("provided manually", async () => {
       const textToEncrypt = "Hello world";
-      const { publicKey, privateKey } = generatePair();
+      const { publicKey, privateKey } = await generatePair();
       const { lastFrameLines, stdin } = await render(
         <face.Component publicKey={publicKey} />,
       );
@@ -157,7 +155,7 @@ describe("encryption", () => {
       const textToEncrypt = new TextDecoder().decode(
         crypto.getRandomValues(array).buffer,
       );
-      const { publicKey, privateKey } = generatePair();
+      const { publicKey, privateKey } = await generatePair();
       const { lastFrameLines, stdin } = await render(
         <face.Component publicKey={publicKey} />,
       );
@@ -184,9 +182,9 @@ describe("encryption", () => {
     test("templates are substituted", async () => {
       const textToEncrypt =
         "Hello <% enter your name %>, this is <% enter other name %> and welcome!";
-      const { publicKey, privateKey } = generatePair();
+      const { publicKey, privateKey } = await generatePair();
       const { lastFrameLines, stdin } = await render(
-        <face.Component publicKey={publicKey} input={textToEncrypt} />,
+        <face.Component input={textToEncrypt} publicKey={publicKey} />,
       );
       await expect
         .poll(lastFrameLines)
@@ -221,9 +219,9 @@ describe("encryption", () => {
     test("substitute input interaction", async () => {
       const textToEncrypt =
         "Hello <% enter your name %>, this is <% enter other name %> and <% what should we say? %>!";
-      const { publicKey } = generatePair();
+      const { publicKey } = await generatePair();
       const { lastFrameLines, stdin, stdout } = await render(
-        <face.Component publicKey={publicKey} input={textToEncrypt} />,
+        <face.Component input={textToEncrypt} publicKey={publicKey} />,
       );
       await expect
         .poll(lastFrameLines)
@@ -264,9 +262,9 @@ describe("encryption", () => {
 
     test("border case without dots", async () => {
       const textToEncrypt = "<% start %> and <% end %>";
-      const { publicKey } = generatePair();
+      const { publicKey } = await generatePair();
       const { lastFrameLines, stdin, stdout } = await render(
-        <face.Component publicKey={publicKey} input={textToEncrypt} />,
+        <face.Component input={textToEncrypt} publicKey={publicKey} />,
       );
       await expect
         .poll(lastFrameLines)
@@ -295,9 +293,9 @@ describe("encryption", () => {
     test("arrows work to navigate substitutes", async () => {
       const textToEncrypt =
         "Hello <% enter your name %>, this is <% enter other name %> and <% what should we say? %>!";
-      const { publicKey } = generatePair();
+      const { publicKey } = await generatePair();
       const { lastFrameLines, stdin, stdout } = await render(
-        <face.Component publicKey={publicKey} input={textToEncrypt} />,
+        <face.Component input={textToEncrypt} publicKey={publicKey} />,
       );
       await stdin.writeLn("Alice");
       await stdin.writeLn("Bob");

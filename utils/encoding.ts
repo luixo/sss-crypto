@@ -1,4 +1,4 @@
-import { KeyObject } from "crypto";
+import type { KeyObject } from "node:crypto";
 
 export const sanitizeBase64 = (input: string) =>
   input.replaceAll(/[^A-Za-z0-9=+|/]/g, "");

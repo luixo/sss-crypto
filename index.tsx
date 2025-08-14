@@ -1,13 +1,13 @@
-import React from "react";
 import { render } from "ink";
 
-import { command, option, run, subcommands, Type } from "cmd-ts";
+import type { Type } from "cmd-ts";
+import { command, option, run, subcommands } from "cmd-ts";
 import type { StandardSchemaV1 } from "@standard-schema/spec";
 import { face as generateSharesFace } from "./faces/generate-shares";
 import { face as encryptFace } from "./faces/encrypt";
 import { face as decryptFace } from "./faces/decrypt";
 import { face as addShareFace } from "./faces/add-share";
-import { Face } from "./faces/types";
+import type { Face } from "./faces/types";
 import { validate } from "./utils/validation";
 
 import {
@@ -23,18 +23,18 @@ const stdType = <S extends StandardSchemaV1>(
 ): Type<string, StandardSchemaV1.InferOutput<S>> => ({
   displayName,
   description: "validated via Standard Schema",
-  from: (input) => validate(schema, input),
+  from: async (input) => validate(schema, input),
 });
 
-export const createProgram = () => {
-  const handleFace =
-    <P extends object, I extends object>(face: Face<P, I>) =>
-    async (input: I) => {
-      const props = await validate(face.schema, input);
-      const instance = render(<face.Component {...props} />);
-      return instance.waitUntilExit();
-    };
+const handleFace =
+  <P extends object, I extends object>(face: Face<P, I>) =>
+  async (input: I) => {
+    const props = await validate(face.schema, input);
+    const instance = render(<face.Component {...props} />);
+    return instance.waitUntilExit();
+  };
 
+export const createProgram = () => {
   const generateSharesCommand = command({
     name: "generate-shares",
     description: "Generate n out of k keys via Shamir's secret sharing scheme",

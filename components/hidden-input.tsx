@@ -1,7 +1,8 @@
 import * as React from "react";
 import chalk from "chalk";
 import { sanitizeBase64 } from "../utils/encoding";
-import { Input, Props as InputProps } from "./input";
+import type { Props as InputProps } from "./input";
+import { Input } from "./input";
 
 export const HiddenInput: React.FC<
   Omit<InputProps, "onEnter"> & {
@@ -39,9 +40,9 @@ export const HiddenInput: React.FC<
     <Input
       onEnter={onEnterRaw}
       {...props}
+      formatValue={hideValue}
       onKeystroke={onKeystroke}
       parseInput={sanitizeBase64}
-      formatValue={hideValue}
     />
   );
 };

@@ -1,5 +1,5 @@
 import z from "zod";
-import { KeyObject } from "node:crypto";
+import type { KeyObject } from "node:crypto";
 import fs from "node:fs/promises";
 
 import path from "node:path";

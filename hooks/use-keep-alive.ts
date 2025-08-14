@@ -1,4 +1,4 @@
 import { useInput } from "ink";
 
-export const useKeepAlive = (shouldKeepAlive: boolean = true) =>
+export const useKeepAlive = (shouldKeepAlive = true) =>
   useInput(() => {}, { isActive: shouldKeepAlive });

@@ -4,12 +4,12 @@ import { Text, Box, Newline } from "ink";
 
 import z from "zod";
 import { generatePair } from "../utils/crypto";
-import { SharesOptions } from "../utils/shares";
+import type { ShareObject, SharesOptions } from "../utils/shares";
 import { keyToPem } from "../utils/encoding";
-import { Face } from "./types";
+import type { Face } from "./types";
 import { SaveDataWarning } from "../components/save-data-warning";
 import { Shares } from "../components/shares";
-import { privateKeyToShares } from "../utils/converters";
+import { generateSharesFromKey } from "../utils/converters";
 import {
   localFileTransform,
   notDirectoryTransform,
@@ -31,18 +31,14 @@ const WriteFileStatusIndicator: React.FC<{
   if (status === "loading") {
     return (
       <Box>
-        <Text color="yellow">
-          {prefix} saving to "{filepath}"...
-        </Text>
+        <Text color="yellow">{`${prefix} saving to "${filepath}"...`}</Text>
       </Box>
     );
   }
   /* c8 ignore stop */
   return (
     <Box>
-      <Text color="green">
-        {prefix} saved to "{filepath}"
-      </Text>
+      <Text color="green">{`${prefix} saved to "${filepath}"`}</Text>
     </Box>
   );
 };
@@ -54,39 +50,46 @@ type Props = SharesOptions & {
 const GenerateShares: React.FC<Props> = ({ pubKeyFilePath, ...props }) => {
   const [pubKeyStatus, setPubKeyStatus] =
     React.useState<WriteFileStatus>("idle");
-  const [{ shares: generatedShares, publicKey }] = React.useState(() => {
-    const pair = generatePair();
-    return {
-      shares: privateKeyToShares(pair.privateKey, props),
-      publicKey: keyToPem(pair.publicKey),
-    };
-  });
+  const [state, setState] = React.useState<{
+    shares: ShareObject[];
+    pair: Awaited<ReturnType<typeof generatePair>>;
+  }>();
   React.useEffect(() => {
-    if (pubKeyFilePath) {
+    if (!state) {
+      generatePair().then((pair) => {
+        setState({
+          pair,
+          shares: generateSharesFromKey(pair.privateKey, props),
+        });
+      });
+    }
+  }, [props, state]);
+  React.useEffect(() => {
+    if (pubKeyFilePath && state) {
       setPubKeyStatus("loading");
-      fs.writeFile(pubKeyFilePath, publicKey).then(() =>
+      fs.writeFile(pubKeyFilePath, keyToPem(state.pair.publicKey)).then(() =>
         setPubKeyStatus("done"),
       );
     }
-  }, [pubKeyFilePath, publicKey]);
+  }, [pubKeyFilePath, state]);
   return (
     <Box flexDirection="column" gap={1}>
       <SaveDataWarning />
       <Box flexDirection="column">
         {pubKeyFilePath ? (
           <WriteFileStatusIndicator
+            filepath={pubKeyFilePath}
             prefix="Public key is"
             status={pubKeyStatus}
-            filepath={pubKeyFilePath}
           />
-        ) : (
+        ) : state ? (
           <Box flexDirection="column">
             <Text color="cyan">Public key</Text>
-            <Text>{publicKey.trim()}</Text>
+            <Text>{keyToPem(state.pair.publicKey).trim()}</Text>
           </Box>
-        )}
+        ) : null}
       </Box>
-      <Shares shares={generatedShares} />
+      {state ? <Shares shares={state.shares} /> : null}
       <Newline />
     </Box>
   );

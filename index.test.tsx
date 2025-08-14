@@ -1,10 +1,10 @@
-import React from "react";
+import type React from "react";
 import { expect, test, describe, assert, vi } from "vitest";
 import { dryRun, parse } from "cmd-ts";
 import { render as renderTesting } from "ink-testing-library";
 import chalk from "chalk";
 
-import { createProgram } from "./index";
+import { createProgram } from ".";
 
 const testPublicKey = {
   kty: "RSA",
@@ -30,8 +30,18 @@ vi.mock("ink", async (importActual) => ({
     return {
       ...result,
       waitUntilExit: async () => {
+        let lastFrame = "";
+        let nextFrame = result.lastFrame() ?? "";
+        while (lastFrame !== nextFrame) {
+          // eslint-disable-next-line no-await-in-loop
+          await new Promise((resolve) => {
+            setTimeout(resolve, 1);
+          });
+          lastFrame = nextFrame;
+          nextFrame = result.lastFrame() ?? "";
+        }
         result.unmount();
-        return result.lastFrame();
+        return nextFrame;
       },
     };
   },
@@ -40,7 +50,7 @@ vi.mock("node:crypto", async (importActual) => {
   const actualModule = await importActual<typeof import("node:crypto")>();
   return {
     ...actualModule,
-    generateKeyPairSync: () => {
+    generateKeyPair: ((_t, _o, callback) => {
       const privateKey = actualModule.createPrivateKey({
         format: "jwk",
         key: testPrivateKey,
@@ -49,8 +59,9 @@ vi.mock("node:crypto", async (importActual) => {
         format: "jwk",
         key: testPublicKey,
       });
-      return { privateKey, publicKey };
-    },
+      // @ts-expect-error This is the expected type
+      callback(null, { privateKey, publicKey });
+    }) as (typeof actualModule)["generateKeyPair"],
   };
 });
 vi.mock("secrets.js", async (importActual) => {
@@ -279,6 +290,7 @@ describe("general", () => {
     const result = await dryRun(cli, "generate-shares -n 5 -k 3".split(" "));
     // eslint-disable-next-line no-underscore-dangle
     assert(result._tag === "ok");
+    // eslint-disable-next-line @typescript-eslint/no-confusing-void-expression
     const frame = await result.value.value;
     expect(frame).toMatchInlineSnapshot(`
       "${chalk.yellow("! Save this data, it will be erased when you close the terminal !")}

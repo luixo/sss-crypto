@@ -1,10 +1,10 @@
 import * as React from "react";
 import { Text, Box, Newline } from "ink";
 
-import { KeyObject } from "crypto";
+import type { KeyObject } from "node:crypto";
 import z from "zod";
 import { encryptText, serializeEncryptedData } from "../utils/crypto";
-import { Face } from "./types";
+import type { Face } from "./types";
 import { useKeepAlive } from "../hooks/use-keep-alive";
 import { Input } from "../components/input";
 import { existingFileSchema, publicKeyTransform } from "../utils/schemas";
@@ -23,8 +23,8 @@ const getTemplates = (input: string): Template[] => {
     new RegExp(`${START_TEMPLATE}.*?${END_TEMPLATE}`, "g"),
   );
   return [...matches].map((match) => ({
-    startIndex: match.index!,
-    endIndex: match.index! + match[0].length,
+    startIndex: match.index,
+    endIndex: match.index + match[0].length,
     templateValue: match[0].slice(START_TEMPLATE.length, -END_TEMPLATE.length),
   }));
 };
@@ -131,6 +131,7 @@ const Encrypt: React.FC<Props> = ({ input: initialInput, publicKey }) => {
               publicKey,
               prevStage.templates.map((template, index) => ({
                 ...template,
+                // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
                 substitute: updatedStage.substitutes[index]!,
               })),
             );
@@ -162,7 +163,8 @@ const Encrypt: React.FC<Props> = ({ input: initialInput, publicKey }) => {
       );
     }
     case "substitutes": {
-      const currentTemplate = stage.templates[stage.substituteIndex];
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+      const currentTemplate = stage.templates[stage.substituteIndex]!;
       const OFFSET = 10;
       return (
         <Box flexDirection="column">
@@ -173,8 +175,10 @@ const Encrypt: React.FC<Props> = ({ input: initialInput, publicKey }) => {
                   substitute !== null && substitute !== "",
               )
               .map((substitute, index) => {
-                const template = stage.templates[index].templateValue.trim();
+                // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+                const template = stage.templates[index]!.templateValue.trim();
                 return (
+                  // eslint-disable-next-line react/no-array-index-key
                   <React.Fragment key={index}>
                     {index === 0 ? null : <Newline />}
                     <Text
@@ -201,11 +205,11 @@ const Encrypt: React.FC<Props> = ({ input: initialInput, publicKey }) => {
             <Text>Please input a substitute:</Text>
             <Input
               key={stage.substituteIndex}
+              onArrow={onArrow}
+              onEnter={onEnter}
               initialValue={
                 stage.substitutes[stage.substituteIndex] ?? undefined
               }
-              onEnter={onEnter}
-              onArrow={onArrow}
             />
           </Box>
         </Box>

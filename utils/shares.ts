@@ -48,7 +48,7 @@ export const serializeShare = ({
 
 export const deserializeShare = async (input: string): Promise<ShareObject> => {
   await validate(serializedShareSchema, input);
-  const [threshold, bits, id, data] = input.split("|");
+  const [threshold, bits = "", id = "", data = ""] = input.split("|");
   return validate(shareObjectSchema, { threshold, bits, id, data });
 };
 
@@ -80,7 +80,7 @@ export type SharesOptions = {
   shares: number;
 };
 
-export const createShares = (
+export const generateShares = (
   message: string,
   options: SharesOptions,
 ): ShareObject[] =>
@@ -94,5 +94,6 @@ export const combineShares = (shares: ShareObject[]): string =>
 export const addShare = (id: number, shares: ShareObject[]): ShareObject =>
   deserializeShareSecret(
     secrets.newShare(id, shares.map(serializeShareSecret)),
-    shares[0].threshold,
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    shares[0]!.threshold,
   );

@@ -1,4 +1,4 @@
-import React from "react";
+import type React from "react";
 
 import fs from "node:fs/promises";
 import { expect, test, describe } from "vitest";
@@ -27,7 +27,7 @@ const getWithValid = (override: Partial<Record<string, string>> = {}) => ({
 
 describe("validation", () => {
   test("threshold", async () => {
-    await expect(() =>
+    await expect(async () =>
       validate(face.schema, getWithValid({ threshold: "a" })),
     ).rejects.toThrow(
       'At "threshold": Invalid input: expected number, received NaN',
@@ -40,12 +40,12 @@ describe("validation", () => {
   });
 
   test("shares", async () => {
-    await expect(() =>
+    await expect(async () =>
       validate(face.schema, getWithValid({ shares: "a" })),
     ).rejects.toThrow(
       'At "shares": Invalid input: expected number, received NaN',
     );
-    await expect(() =>
+    await expect(async () =>
       validate(face.schema, getWithValid({ threshold: "3", shares: "3" })),
     ).rejects.toThrow(`At "<root>": 'k' should be less than 'n'`);
     expect(
@@ -60,11 +60,11 @@ describe("validation", () => {
   test("public key output", async () => {
     const dirPath = "path/to/dir";
     fs.mkdir(dirPath, { recursive: true });
-    await expect(() =>
+    await expect(async () =>
       validate(face.schema, getWithValid({ pubOutput: dirPath })),
     ).rejects.toThrow("Public key path should not be a directory.");
     const outsideDirPath = "../foo.key";
-    await expect(() =>
+    await expect(async () =>
       validate(face.schema, getWithValid({ pubOutput: outsideDirPath })),
     ).rejects.toThrow("Public key only can be written in a current directory.");
     await fs.writeFile("pub2.key", "output");
@@ -89,13 +89,14 @@ describe("shares generation", () => {
   test("no pub key file path", async () => {
     const sharesAmount = 5;
     const { lastFrameLines } = await render(
-      <face.Component threshold={3} shares={sharesAmount} />,
+      <face.Component shares={sharesAmount} threshold={3} />,
     );
     await expect
       .poll(() => {
         const [warningBlock, publicKeyBlock, ...sharesBlock] =
           lastFrameLines("\n\n");
-        const publicKeyLines = publicKeyBlock.split("\n");
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+        const publicKeyLines = publicKeyBlock!.split("\n");
         const publicKeyLength = publicKeyLines
           .slice(2, -1)
           .reduce((acc, line) => acc + line.length, 0);
@@ -108,7 +109,8 @@ describe("shares generation", () => {
           ].join("\n"),
           ...sharesBlock.map((shareBlock) => {
             const lines = shareBlock.split("\n");
-            if (lines[0].includes("Share #")) {
+            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+            if (lines[0]!.includes("Share #")) {
               return [
                 ...lines.slice(0, 1),
                 `share: ${lines.slice(1).reduce((acc, line) => acc + line.length, 0)}`,
@@ -140,9 +142,9 @@ describe("shares generation", () => {
     const sharesAmount = 5;
     const { lastFrameLines } = await render(
       <face.Component
-        threshold={3}
-        shares={sharesAmount}
         pubKeyFilePath={pubKeyPath}
+        shares={sharesAmount}
+        threshold={3}
       />,
     );
     await expect
@@ -154,7 +156,8 @@ describe("shares generation", () => {
           publicKeyBlock,
           ...sharesBlock.map((shareBlock) => {
             const lines = shareBlock.split("\n");
-            if (lines[0].includes("Share #")) {
+            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+            if (lines[0]!.includes("Share #")) {
               return [
                 ...lines.slice(0, 1),
                 `share: ${lines.slice(1).reduce((acc, line) => acc + line.length, 0)}`,
@@ -174,7 +177,8 @@ describe("shares generation", () => {
           `share: ${SHARE_LENGTH + SHARE_PREFIX_LENGTH}`,
         ]),
       ]);
-    const publicKeyResult = (await fs.readFile("pub.key")).toString("utf-8");
+    const publicKeyBuffer = await fs.readFile("pub.key");
+    const publicKeyResult = publicKeyBuffer.toString("utf-8");
     const publicKey = publicKeyResult.split("\n").slice(1, -2);
     expect(publicKey.join("")).toHaveLength(PUBLIC_KEY_LENGTH);
     expect(publicKeyResult).toEqual(
@@ -190,9 +194,10 @@ describe("shares generation", () => {
   test("verify shares can decrypt data", async () => {
     const sharesAmount = 5;
     const { lastFrameLines } = await render(
-      <face.Component threshold={3} shares={sharesAmount} />,
+      <face.Component shares={sharesAmount} threshold={3} />,
     );
 
+    await expect.poll(() => lastFrameLines("\n\n").length).toEqual(7);
     const [, publicKeyBlock, ...sharesBlocks] = lastFrameLines("\n\n");
     const serializedShares = sharesBlocks.map((shareBlock) =>
       shareBlock.split("\n").slice(1).join(""),
@@ -201,7 +206,8 @@ describe("shares generation", () => {
     const textToEncrypt = "Hello world\nNext line please";
     const encryptedData = encryptText(
       textToEncrypt,
-      parsePublicKey(Buffer.from(publicKeyBlock)),
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+      parsePublicKey(Buffer.from(publicKeyBlock!)),
     );
     const decryptedText = decryptText(
       encryptedData,
