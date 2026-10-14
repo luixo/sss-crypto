@@ -2,7 +2,7 @@ import type { KeyObject } from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
 
-import z from "zod";
+import { z } from "zod";
 
 import { parsePublicKey } from "./crypto";
 import { readFileSafe, rootPath } from "./fs";
@@ -13,45 +13,42 @@ export const thresholdSchema = z.coerce.number().min(2);
 export const sharesSchema = z.coerce.number().min(2);
 export const newSharesAmountSchema = z.number().min(1).max(10).optional();
 
-export const publicKeyTransform = async (
+export const publicKeyTransform = (
 	buffer: Buffer,
 	ctx: z.RefinementCtx,
-): Promise<KeyObject> => {
+): KeyObject => {
 	try {
 		return parsePublicKey(buffer);
-	} catch (e) {
+	} catch (error) {
 		if (
-			typeof e === "object" &&
-			e &&
-			"code" in e &&
-			e.code === "ERR_OSSL_UNSUPPORTED"
+			typeof error === "object" &&
+			error &&
+			"code" in error &&
+			error.code === "ERR_OSSL_UNSUPPORTED"
 		) {
 			ctx.issues.push({
 				code: "custom",
-				message: "Can't read public key, probably data is corrupted.",
 				input: buffer,
+				message: "Can't read public key, probably data is corrupted.",
 			});
 			/* c8 ignore next 7 */
 		} else {
 			ctx.issues.push({
 				code: "custom",
-				message: String(e),
 				input: buffer,
+				message: String(error),
 			});
 		}
 		return z.NEVER;
 	}
 };
-export const localFileTransform = async (
-	filename: string,
-	ctx: z.RefinementCtx,
-) => {
+export const localFileTransform = (filename: string, ctx: z.RefinementCtx) => {
 	const relativePath = path.relative(rootPath, path.resolve(filename));
 	if (relativePath.startsWith("..")) {
 		ctx.issues.push({
 			code: "custom",
-			message: `Public key only can be written in a current directory.`,
 			input: filename,
+			message: `Public key only can be written in a current directory.`,
 		});
 		return z.NEVER;
 	}
@@ -67,8 +64,8 @@ export const notDirectoryTransform = async (
 		if (stats.isDirectory()) {
 			ctx.issues.push({
 				code: "custom",
-				message: `Public key path should not be a directory.`,
 				input: filename,
+				message: `Public key path should not be a directory.`,
 			});
 			return z.NEVER;
 		}

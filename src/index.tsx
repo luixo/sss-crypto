@@ -20,8 +20,8 @@ const stdType = <S extends StandardSchemaV1>(
 	schema: S,
 	displayName: string,
 ): Type<string, StandardSchemaV1.InferOutput<S>> => ({
-	displayName,
 	description: "validated via Standard Schema",
+	displayName,
 	from: async (input) => validate(schema, input, mapArgErrors),
 });
 
@@ -35,96 +35,97 @@ const handleFace =
 
 export const createProgram = () => {
 	const generateSharesCommand = command({
-		name: "generate-shares",
-		description: "Generate n out of k keys via Shamir's secret sharing scheme",
 		args: {
-			threshold: option({
-				long: "threshold",
-				short: "k",
-				description:
-					"threshold of shared parts required to be combined to a key",
-				type: stdType(thresholdSchema, "threshold"),
-			}),
-			shares: option({
-				long: "shares",
-				short: "n",
-				description: "total amount of shared parts",
-				type: stdType(sharesSchema, "shares"),
-			}),
 			pubOutput: option({
+				defaultValue: () => undefined,
+				description: "output filename for a public key",
 				long: "pubOutput",
 				short: "p",
-				description: "output filename for a public key",
 				type: stdType(fileSchema.optional(), "pubOutput"),
-				defaultValue: () => undefined,
+			}),
+			shares: option({
+				description: "total amount of shared parts",
+				long: "shares",
+				short: "n",
+				type: stdType(sharesSchema, "shares"),
+			}),
+			threshold: option({
+				description:
+					"threshold of shared parts required to be combined to a key",
+				long: "threshold",
+				short: "k",
+				type: stdType(thresholdSchema, "threshold"),
 			}),
 		},
+		description: "Generate n out of k keys via Shamir's secret sharing scheme",
 		handler: handleFace(generateSharesFace),
+		name: "generate-shares",
 	});
 
 	const decryptCommand = command({
-		name: "decrypt",
-		description: "Decrypt a message with k out of n shares",
 		args: {
 			input: option({
+				description: "path to a file to decrypt",
 				long: "input",
 				short: "i",
-				description: "path to a file to decrypt",
 				type: stdType(fileSchema, "input"),
 			}),
 		},
+		description: "Decrypt a message with k out of n shares",
 		handler: handleFace(decryptFace),
+		name: "decrypt",
 	});
 
 	const addShareCommand = command({
-		name: "add-share",
-		description: "Add a new share",
 		args: {
 			amount: option({
+				defaultValue: () => 1,
+				description: "amount of newly added shares",
 				long: "amount",
 				short: "n",
-				description: "amount of newly added shares",
 				type: stdType(newSharesAmountSchema.optional(), "amount"),
-				defaultValue: () => 1,
 			}),
 		},
+		description: "Add a new share",
 		handler: handleFace(addShareFace),
+		name: "add-share",
 	});
 
 	const encryptCommand = command({
-		name: "encrypt",
-		description: "Encrypt a message with a given public key",
 		args: {
-			pub: option({
-				long: "pub",
-				short: "p",
-				description: "path to a file to encrypt",
-				type: stdType(fileSchema.optional().default("pub.key"), "pubKey"),
-				defaultValue: () => "pub.key",
-			}),
 			input: option({
+				defaultValue: () => undefined,
+				description: "path to a file to encrypt",
 				long: "input",
 				short: "i",
-				description: "path to a file to encrypt",
 				type: stdType(fileSchema.optional(), "input"),
-				defaultValue: () => undefined,
+			}),
+			pub: option({
+				defaultValue: () => "pub.key",
+				description: "path to a file to encrypt",
+				long: "pub",
+				short: "p",
+				type: stdType(fileSchema.optional().default("pub.key"), "pubKey"),
 			}),
 		},
+		description: "Encrypt a message with a given public key",
 		handler: handleFace(encryptFace),
+		name: "encrypt",
 	});
 
 	return subcommands({
-		name: "sss-cli",
 		cmds: {
-			"generate-shares": generateSharesCommand,
-			decrypt: decryptCommand,
 			"add-share": addShareCommand,
+			decrypt: decryptCommand,
 			encrypt: encryptCommand,
+			"generate-shares": generateSharesCommand,
 		},
+		name: "sss-cli",
 	});
 };
 
-/* c8 ignore next 3 */
+/* v8 ignore if -- @preserve: executable entry point, not the imported CLI factory */
+// oxlint-disable-next-line node/no-process-env
 if (process.env.NODE_ENV !== "test") {
-	run(createProgram(), process.argv.slice(2));
+	await run(createProgram(), process.argv.slice(2));
 }

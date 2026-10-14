@@ -15,13 +15,13 @@ type ValidationProps<I, O> = {
 export const HiddenInput: React.FC<
 	Omit<InputProps, "onEnter"> & ValidationProps<unknown, unknown>
 > = ({ schema, onDone, ...props }) => {
-	const [error, setError] = React.useState<string>();
+	const [localError, setLocalError] = React.useState<string>();
 	const onEnterRaw = React.useCallback(
 		async (input: string) => {
 			try {
 				onDone(await validate(schema, input));
-			} catch (e) {
-				setError(String(e));
+			} catch (error) {
+				setLocalError(String(error));
 			}
 		},
 		[onDone, schema],
@@ -32,17 +32,19 @@ export const HiddenInput: React.FC<
 		if (key.return) {
 			return;
 		}
-		setError(undefined);
+		setLocalError(undefined);
 	}, []);
 	const hideValue = React.useCallback(
 		(value: string) =>
 			/* c8 ignore next */
-			`(input of length ${value.length})${error ? `\n${chalk.red(error)}` : ""}`,
-		[error],
+			`(input of length ${value.length})${localError === undefined ? "" : `\n${chalk.red(localError)}`}`,
+		[localError],
 	);
 	return (
 		<Input
-			onEnter={onEnterRaw}
+			onEnter={(input) => {
+				void onEnterRaw(input);
+			}}
 			{...props}
 			formatValue={hideValue}
 			onKeystroke={onKeystroke}

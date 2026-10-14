@@ -1,7 +1,7 @@
 import * as crypto from "node:crypto";
 import { promisify } from "node:util";
 
-import z from "zod";
+import { z } from "zod";
 
 import { sanitizeBase64 } from "./encoding";
 
@@ -21,15 +21,15 @@ export const generatePair = async () =>
 
 export const parsePublicKey = (data: Buffer): crypto.KeyObject =>
 	crypto.createPublicKey({
-		key: data,
 		format: "pem",
+		key: data,
 		type: "pkcs1",
 	});
 
 export const parsePrivateKey = (data: Buffer): crypto.KeyObject =>
 	crypto.createPrivateKey({
-		key: data,
 		format: "der",
+		key: data,
 		type: "pkcs1",
 	});
 
@@ -43,9 +43,9 @@ const authTagLength = getBase64ByteLength(authTagBytes);
 const aesKeyLength = getBase64ByteLength(symmetricEncryptionBytes);
 export const encryptedBoxSchema = z
 	.string()
-	.transform((lines) => lines.replaceAll(/\s/g, ""))
+	.transform((lines) => lines.replaceAll(/\s/gu, ""))
 	.pipe(
-		z.string().regex(/^.*\|.*\|.*\|.*\|.*$/, {
+		z.string().regex(/^.*\|.*\|.*\|.*\|.*$/u, {
 			error: "Encrypted box format is incorrect",
 		}),
 	)
@@ -57,27 +57,18 @@ export const encryptedBoxSchema = z
 			encryptedAesKey = "",
 			encryptedText = "",
 			...rest
-		] = box.split("|").map((element) => element.replaceAll(/\s/g, ""));
+		] = box.split("|").map((element) => element.replaceAll(/\s/gu, ""));
 		return {
-			tag: tag as typeof brandingTag,
-			initVector,
 			authTag,
 			encryptedAesKey,
 			encryptedText,
 			extra: rest.join("|"),
+			initVector,
+			tag: tag as typeof brandingTag,
 		};
 	})
 	.pipe(
 		z.object({
-			tag: z.literal(brandingTag, {
-				error: `Data is invalid, expected data with "${brandingTag}" prefix.`,
-			}),
-			initVector: z
-				.string()
-				.length(initialVectorLength, {
-					error: `Initial vector has to have length of ${initialVectorLength} bytes.`,
-				})
-				.transform(sanitizeBase64),
 			authTag: z
 				.string()
 				.length(initialVectorLength, {
@@ -98,6 +89,15 @@ export const encryptedBoxSchema = z
 				.transform(sanitizeBase64),
 			extra: z.string().refine((value) => value.length === 0, {
 				error: "Extra data on decryption.",
+			}),
+			initVector: z
+				.string()
+				.length(initialVectorLength, {
+					error: `Initial vector has to have length of ${initialVectorLength} bytes.`,
+				})
+				.transform(sanitizeBase64),
+			tag: z.literal(brandingTag, {
+				error: `Data is invalid, expected data with "${brandingTag}" prefix.`,
 			}),
 		}),
 	);
@@ -130,7 +130,7 @@ const cipherSymmetric = ({
 		cipher.final(),
 	]);
 	const authTag = cipher.getAuthTag();
-	return { encryptedText, authTag };
+	return { authTag, encryptedText };
 };
 const decipherSymmetric = ({
 	key,
@@ -164,23 +164,23 @@ export const encryptText = (
 	const encryptedAesKey = crypto.publicEncrypt(
 		{
 			key: publicKey,
-			padding: crypto.constants.RSA_PKCS1_OAEP_PADDING,
 			oaepHash: "sha256",
+			padding: crypto.constants.RSA_PKCS1_OAEP_PADDING,
 		},
 		symmetricKey,
 	);
 	const { authTag, encryptedText } = cipherSymmetric({
-		key: symmetricKey,
-		initVector,
 		dataToEncrypt,
+		initVector,
+		key: symmetricKey,
 	});
 	return {
-		tag: "sss-enc",
 		authTag: authTag.toString("base64"),
-		initVector: initVector.toString("base64"),
 		encryptedAesKey: encryptedAesKey.toString("base64"),
 		encryptedText: encryptedText.toString("base64"),
 		extra: "",
+		initVector: initVector.toString("base64"),
+		tag: "sss-enc",
 	};
 };
 
@@ -196,15 +196,15 @@ export const decryptText = (
 	const symmetricKey = crypto.privateDecrypt(
 		{
 			key: privateKey,
-			padding: crypto.constants.RSA_PKCS1_OAEP_PADDING,
 			oaepHash: "sha256",
+			padding: crypto.constants.RSA_PKCS1_OAEP_PADDING,
 		},
 		Buffer.from(encryptedAesKey, "base64"),
 	);
 	return decipherSymmetric({
-		key: symmetricKey,
-		initVector: Buffer.from(initVector, "base64"),
 		authTag: Buffer.from(authTag, "base64"),
 		encryptedText: Buffer.from(encryptedText, "base64"),
+		initVector: Buffer.from(initVector, "base64"),
+		key: symmetricKey,
 	});
 };

@@ -1,4 +1,4 @@
-import { Text, Box, Newline } from "ink";
+import { Box, Newline, Text } from "ink";
 import * as React from "react";
 
 import { HiddenInput } from "~/components/hidden-input";
@@ -15,8 +15,8 @@ export const SharesInput: React.FC<Props> = ({ onDone, onError }) => {
 	const [threshold, setThreshold] = React.useState<number | undefined>();
 	const [shares, setShares] = React.useState<ShareObject[]>([]);
 	const onShareInput = React.useCallback(
-		async (share: ShareObject) => {
-			if (threshold && threshold !== share.threshold) {
+		(share: ShareObject) => {
+			if (threshold !== undefined && threshold !== share.threshold) {
 				onError(
 					`Expected all shares to have the same threshold, got ${threshold} and ${share.threshold}`,
 				);
@@ -44,7 +44,7 @@ export const SharesInput: React.FC<Props> = ({ onDone, onError }) => {
 			<Text>
 				<Text>
 					Please input share #{shares.length + 1}
-					{threshold ? ` (out of ${threshold})` : ""}
+					{threshold === undefined ? "" : ` (out of ${threshold})`}
 				</Text>
 				<Newline />
 				<HiddenInput

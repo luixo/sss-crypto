@@ -5,21 +5,24 @@ import type { CoverageReporter } from "vitest/node";
 export default defineConfig({
 	plugins: [tsconfigPaths()],
 	test: {
-		watch: false,
 		coverage: {
+			enabled: true,
 			exclude: [
 				...(configDefaults.coverage.exclude ?? []),
 				"__mocks__",
 				"testing",
 				"oxfmt.config.ts",
+				"oxlint.config.ts",
 			],
-			all: true,
-			enabled: true,
 			reporter: [
 				...(configDefaults.coverage.reporter as CoverageReporter[]),
 				"json-summary",
 			],
+			thresholds: {
+				"100": true,
+			},
 		},
 		setupFiles: "testing/setup.ts",
+		watch: false,
 	},
 });

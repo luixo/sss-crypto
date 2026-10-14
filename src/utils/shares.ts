@@ -1,39 +1,34 @@
 import secrets from "secrets.js";
-import z from "zod";
+import { z } from "zod";
 
 import { SHARE_LENGTH } from "./consts";
 
 export const shareObjectSchema = z
 	.string()
-	.transform((lines) => lines.replaceAll(/\s/g, ""))
+	.transform((lines) => lines.replaceAll(/\s/gu, ""))
 	.pipe(
 		z
 			.string()
-			.regex(/^\d+\|\d+\|[0-9a-f]+\|[a-zA-Z0-9+=/]*$/, {
+			.regex(/^\d+\|\d+\|[0-9a-f]+\|[a-zA-Z0-9+=/]*$/u, {
 				error: "Share format is incorrect",
 			})
 			.transform((input) => {
 				const [threshold = "", bits = "", id = "", data = ""] =
 					input.split("|");
-				return { threshold, bits, id, data };
+				return { bits, data, id, threshold };
 			}),
 	)
 	.pipe(
 		z
 			.object({
-				threshold: z.string().transform(Number).pipe(z.number().min(2)),
 				bits: z
 					.string()
 					.transform((input) => Number.parseInt(input, 36))
 					.pipe(z.number().min(3).max(20)),
-				id: z
-					.string()
-					.transform((input) => Number.parseInt(input, 16))
-					.pipe(z.number().min(1)),
 				data: z
 					.string()
 					.regex(
-						/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/,
+						/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/u,
 						{
 							error: "Expected to have base64 for a share body",
 						},
@@ -41,6 +36,11 @@ export const shareObjectSchema = z
 					.refine((data) => data.length === SHARE_LENGTH, {
 						error: `Expected to have ${SHARE_LENGTH} symbols for a share body`,
 					}),
+				id: z
+					.string()
+					.transform((input) => Number.parseInt(input, 16))
+					.pipe(z.number().min(1)),
+				threshold: z.string().transform(Number).pipe(z.number().min(2)),
 			})
 			.refine(({ bits, id }) => id <= 2 ** (bits - 1), {
 				error: "Expected id to be in Galois field",
@@ -73,9 +73,9 @@ const deserializeShareSecret = (
 	const { bits, id, data } = secrets.extractShareComponents(share);
 	return {
 		bits,
+		data: Buffer.from(data, "hex").toString("base64"),
 		id,
 		threshold,
-		data: Buffer.from(data, "hex").toString("base64"),
 	};
 };
 

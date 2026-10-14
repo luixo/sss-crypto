@@ -8,17 +8,18 @@ import { combineShares, generateShares } from "./shares";
 export const sharesToPrivateKey = (shares: ShareObject[]): crypto.KeyObject => {
 	try {
 		return parsePrivateKey(Buffer.from(combineShares(shares), "hex"));
-	} catch (e) {
+	} catch (error) {
 		if (
-			typeof e === "object" &&
-			e &&
-			"code" in e &&
-			e.code === "ERR_OSSL_UNSUPPORTED"
+			typeof error === "object" &&
+			error &&
+			"code" in error &&
+			error.code === "ERR_OSSL_UNSUPPORTED"
 		) {
-			throw new Error("Can't combine shares, probably shares are corrupted");
-			/* c8 ignore next 3 */
+			throw new Error("Can't combine shares, probably shares are corrupted", {
+				cause: error,
+			});
 		}
-		throw e;
+		throw error;
 	}
 };
 

@@ -1,8 +1,8 @@
 import fs from "node:fs/promises";
 
-import { Text, Box, Newline } from "ink";
+import { Box, Newline, Text } from "ink";
 import * as React from "react";
-import z from "zod";
+import { z } from "zod";
 
 import { SaveDataWarning } from "~/components/save-data-warning";
 import { Shares } from "~/components/shares";
@@ -55,40 +55,45 @@ const GenerateShares: React.FC<Props> = ({ pubKeyFilePath, ...props }) => {
 		shares: ShareObject[];
 		pair: Awaited<ReturnType<typeof generatePair>>;
 	}>();
+	const setPairData = React.useCallback(async () => {
+		const pair = await generatePair();
+		setState({
+			pair,
+			shares: generateSharesFromKey(pair.privateKey, props),
+		});
+		// oxlint-disable-next-line react/memo-dependencies react-hooks/exhaustive-deps
+	}, []);
 	React.useEffect(() => {
 		if (!state) {
-			generatePair().then((pair) => {
-				setState({
-					pair,
-					shares: generateSharesFromKey(pair.privateKey, props),
-				});
-			});
+			// oxlint-disable-next-line react/set-state-in-effect
+			void setPairData();
 		}
-	}, [props, state]);
+	}, [setPairData, state]);
 	React.useEffect(() => {
-		if (pubKeyFilePath && state) {
-			setPubKeyStatus("loading");
-			fs.writeFile(pubKeyFilePath, keyToPem(state.pair.publicKey)).then(() =>
-				setPubKeyStatus("done"),
-			);
+		if (pubKeyFilePath !== undefined && state) {
+			void fs
+				.writeFile(pubKeyFilePath, keyToPem(state.pair.publicKey))
+				.then(() => setPubKeyStatus("done"));
 		}
 	}, [pubKeyFilePath, state]);
 	return (
 		<Box flexDirection="column" gap={1}>
 			<SaveDataWarning />
 			<Box flexDirection="column">
-				{pubKeyFilePath ? (
+				{pubKeyFilePath === undefined ? (
+					state ? (
+						<Box flexDirection="column">
+							<Text color="cyan">Public key</Text>
+							<Text>{keyToPem(state.pair.publicKey).trim()}</Text>
+						</Box>
+					) : null
+				) : (
 					<WriteFileStatusIndicator
 						filepath={pubKeyFilePath}
 						prefix="Public key is"
-						status={pubKeyStatus}
+						status={state && pubKeyStatus === "idle" ? "loading" : pubKeyStatus}
 					/>
-				) : state ? (
-					<Box flexDirection="column">
-						<Text color="cyan">Public key</Text>
-						<Text>{keyToPem(state.pair.publicKey).trim()}</Text>
-					</Box>
-				) : null}
+				)}
 			</Box>
 			{state ? <Shares shares={state.shares} /> : null}
 			<Newline />
@@ -98,13 +103,13 @@ const GenerateShares: React.FC<Props> = ({ pubKeyFilePath, ...props }) => {
 
 const schema = z
 	.object({
-		threshold: thresholdSchema,
-		shares: sharesSchema,
 		pubOutput: z
 			.string()
 			.transform(localFileTransform)
 			.transform(notDirectoryTransform)
 			.optional(),
+		shares: sharesSchema,
+		threshold: thresholdSchema,
 	})
 	.refine(({ threshold, shares }) => shares > threshold, {
 		error: "'k' should be less than 'n'.",

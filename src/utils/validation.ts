@@ -10,7 +10,12 @@ export const mapArgErrors: MapErrors = (issues) =>
 		.map((issue) => {
 			const path =
 				!issue.path || issue.path.length === 0 ? ["<root>"] : issue.path;
-			return `Arg "${path.join(".")}" error: ${issue.message}`;
+			const pathString = path
+				.map((segment) =>
+					String(typeof segment === "object" ? segment.key : segment),
+				)
+				.join(".");
+			return `Arg "${pathString}" error: ${issue.message}`;
 		})
 		.join("\n");
 

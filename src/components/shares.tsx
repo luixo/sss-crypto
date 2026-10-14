@@ -1,4 +1,4 @@
-import { Text, Box } from "ink";
+import { Box, Text } from "ink";
 import type * as React from "react";
 
 import type { ShareObject } from "~/utils/shares";

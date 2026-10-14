@@ -1,8 +1,8 @@
 import type { KeyObject } from "node:crypto";
 
-import { Text, Box, Newline } from "ink";
+import { Box, Newline, Text } from "ink";
 import * as React from "react";
-import z from "zod";
+import { z } from "zod";
 
 import { Input } from "~/components/input";
 import type { Face } from "~/faces/types";
@@ -21,11 +21,11 @@ type Template = {
 
 const getTemplates = (input: string): Template[] => {
 	const matches = input.matchAll(
-		new RegExp(`${START_TEMPLATE}.*?${END_TEMPLATE}`, "g"),
+		new RegExp(`${START_TEMPLATE}.*?${END_TEMPLATE}`, "gu"),
 	);
 	return [...matches].map((match) => ({
-		startIndex: match.index,
 		endIndex: match.index + match[0].length,
+		startIndex: match.index,
 		templateValue: match[0].slice(START_TEMPLATE.length, -END_TEMPLATE.length),
 	}));
 };
@@ -41,10 +41,10 @@ const getEncryptedStage = (
 		input,
 	);
 	return {
-		type: "result",
 		encryptedText: serializeEncryptedData(
 			encryptText(templatedInput, publicKey),
 		),
+		type: "result",
 	};
 };
 
@@ -54,11 +54,11 @@ const verifyInputSubstitutes = (input: string, publicKey: KeyObject): Stage => {
 		return getEncryptedStage(input, publicKey, []);
 	}
 	return {
-		type: "substitutes",
 		input,
-		templates,
-		substitutes: templates.map(() => null),
 		substituteIndex: 0,
+		substitutes: templates.map(() => null),
+		templates,
+		type: "substitutes",
 	};
 };
 
@@ -82,7 +82,7 @@ type Stage =
 
 const Encrypt: React.FC<Props> = ({ input: initialInput, publicKey }) => {
 	const [stage, setStage] = React.useState<Stage>(() => {
-		if (!initialInput) {
+		if (initialInput === undefined) {
 			return { type: "input" };
 		}
 		return verifyInputSubstitutes(initialInput, publicKey);
@@ -229,10 +229,10 @@ const Encrypt: React.FC<Props> = ({ input: initialInput, publicKey }) => {
 
 const schema = z
 	.object({
-		pub: existingFileSchema.transform(publicKeyTransform),
 		input: existingFileSchema
 			.optional()
 			.transform((input) => input?.toString() ?? ""),
+		pub: existingFileSchema.transform(publicKeyTransform),
 	})
 	.transform(({ input, pub }) => ({ input, publicKey: pub }));
 

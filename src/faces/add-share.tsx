@@ -1,6 +1,6 @@
-import { Text, Box, Newline } from "ink";
+import { Box, Newline, Text } from "ink";
 import * as React from "react";
-import z from "zod";
+import { z } from "zod";
 
 import { SaveDataWarning } from "~/components/save-data-warning";
 import { Share } from "~/components/shares";
@@ -30,8 +30,8 @@ type Stage =
 const AddShare: React.FC = () => {
 	const [stage, setStage] = React.useState<Stage>({ type: "input" });
 	const sharesKey = useResetKey({
-		onReset: () => setStage({ type: "input" }),
 		isActive: stage.type === "error",
+		onReset: () => setStage({ type: "input" }),
 	});
 	useKeepAlive(stage.type === "input");
 	switch (stage.type) {
@@ -39,15 +39,15 @@ const AddShare: React.FC = () => {
 			return (
 				<SharesInput
 					key={sharesKey}
-					onError={(message) => setStage({ type: "error", message })}
+					onError={(message) => setStage({ message, type: "error" })}
 					onDone={(shares) => {
 						try {
-							setStage({ type: "result", result: getNewShare(shares) });
-						} catch (e) {
+							setStage({ result: getNewShare(shares), type: "result" });
+						} catch (error) {
 							setStage({
-								type: "error",
 								/* c8 ignore next */
-								message: e instanceof Error ? e.message : String(e),
+								message: error instanceof Error ? error.message : String(error),
+								type: "error",
 							});
 						}
 					}}

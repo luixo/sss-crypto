@@ -2,10 +2,10 @@ import fs from "node:fs/promises";
 
 import chalk from "chalk";
 import stripAnsi from "strip-ansi";
-import { expect, test, describe } from "vitest";
+import { describe, expect, test } from "vitest";
 
 import { face } from "~/faces/encrypt";
-import { decryptText, generatePair, encryptedBoxSchema } from "~/utils/crypto";
+import { decryptText, encryptedBoxSchema, generatePair } from "~/utils/crypto";
 import { keyToPem } from "~/utils/encoding";
 import { mapArgErrors, validate } from "~/utils/validation";
 
@@ -36,7 +36,7 @@ describe("validation", () => {
 
 		test("target is a directory", async () => {
 			const dirPath = "path/to/dir";
-			fs.mkdir(dirPath, { recursive: true });
+			await fs.mkdir(dirPath, { recursive: true });
 			await expect(async () =>
 				validate(face.schema, { pub: dirPath }, mapArgErrors),
 			).rejects.toThrow('Arg "pub" error: File "path/to/dir" is not a file.');
@@ -60,7 +60,7 @@ describe("validation", () => {
 			await expect(async () =>
 				validate(
 					face.schema,
-					{ pub: pubKeyPath, input: "non-existent" },
+					{ input: "non-existent", pub: pubKeyPath },
 					mapArgErrors,
 				),
 			).rejects.toThrow(
@@ -77,7 +77,7 @@ describe("validation", () => {
 			await expect(async () =>
 				validate(
 					face.schema,
-					{ pub: pubKeyPath, input: dirPath },
+					{ input: dirPath, pub: pubKeyPath },
 					mapArgErrors,
 				),
 			).rejects.toThrow('Arg "input" error: File "path/to/dir" is not a file.');
@@ -94,13 +94,13 @@ describe("validation", () => {
 		const { publicKey: parsedPublicKey, input } = await validate(
 			face.schema,
 			{
-				pub: pubKeyPath,
 				input: inputPath,
+				pub: pubKeyPath,
 			},
 			mapArgErrors,
 		);
-		expect(keyToPem(publicKey)).toEqual(keyToPem(parsedPublicKey));
-		expect(input).toEqual(inputToEncrypt);
+		expect(keyToPem(publicKey)).toStrictEqual(keyToPem(parsedPublicKey));
+		expect(input).toStrictEqual(inputToEncrypt);
 	});
 });
 
@@ -111,10 +111,11 @@ describe("encryption", () => {
 			<face.Component publicKey={publicKey} />,
 		);
 
-		const expectLastLine = async (lastLine: string) =>
-			expect
-				.poll(lastFrameLines)
-				.toEqual(["Please input text to encrypt:", lastLine]);
+		const expectLastLine = async (lastLine: string) => {
+			await expect
+				.poll(() => lastFrameLines())
+				.toStrictEqual(["Please input text to encrypt:", lastLine]);
+		};
 
 		await expectLastLine(chalk.red("(no input)"));
 		await stdin.write("1");
@@ -138,9 +139,11 @@ describe("encryption", () => {
 				encryptedText.join(""),
 			);
 			await expect
-				.poll(lastFrameLines)
-				.toEqual(["Encryption result:", ...encryptedText]);
-			expect(decryptText(encryptedData, privateKey)).toEqual(textToEncrypt);
+				.poll(() => lastFrameLines())
+				.toStrictEqual(["Encryption result:", ...encryptedText]);
+			expect(decryptText(encryptedData, privateKey)).toStrictEqual(
+				textToEncrypt,
+			);
 		});
 
 		test("provided manually", async () => {
@@ -150,12 +153,18 @@ describe("encryption", () => {
 				<face.Component publicKey={publicKey} />,
 			);
 			await expect
-				.poll(lastFrameLines)
-				.toEqual(["Please input text to encrypt:", chalk.red("(no input)")]);
+				.poll(() => lastFrameLines())
+				.toStrictEqual([
+					"Please input text to encrypt:",
+					chalk.red("(no input)"),
+				]);
 			await stdin.enter();
 			await expect
-				.poll(lastFrameLines)
-				.toEqual(["Please input text to encrypt:", chalk.red("(no input)")]);
+				.poll(() => lastFrameLines())
+				.toStrictEqual([
+					"Please input text to encrypt:",
+					chalk.red("(no input)"),
+				]);
 			await stdin.writeLn(textToEncrypt);
 			const [, ...encryptedText] = lastFrameLines();
 			const encryptedData = await validate(
@@ -163,9 +172,11 @@ describe("encryption", () => {
 				encryptedText.join(""),
 			);
 			await expect
-				.poll(lastFrameLines)
-				.toEqual(["Encryption result:", ...encryptedText]);
-			expect(decryptText(encryptedData, privateKey)).toEqual(textToEncrypt);
+				.poll(() => lastFrameLines())
+				.toStrictEqual(["Encryption result:", ...encryptedText]);
+			expect(decryptText(encryptedData, privateKey)).toStrictEqual(
+				textToEncrypt,
+			);
 		});
 
 		test("long text", async () => {
@@ -178,22 +189,30 @@ describe("encryption", () => {
 				<face.Component publicKey={publicKey} />,
 			);
 			await expect
-				.poll(lastFrameLines)
-				.toEqual(["Please input text to encrypt:", chalk.red("(no input)")]);
+				.poll(() => lastFrameLines())
+				.toStrictEqual([
+					"Please input text to encrypt:",
+					chalk.red("(no input)"),
+				]);
 			await stdin.enter();
 			await expect
-				.poll(lastFrameLines)
-				.toEqual(["Please input text to encrypt:", chalk.red("(no input)")]);
+				.poll(() => lastFrameLines())
+				.toStrictEqual([
+					"Please input text to encrypt:",
+					chalk.red("(no input)"),
+				]);
 			await stdin.writeLn(textToEncrypt);
 			await stdin.enter();
 			await expect
 				.poll(() => lastFrameLines().at(0))
-				.toEqual("Encryption result:");
+				.toStrictEqual("Encryption result:");
 			const encryptedData = await validate(
 				encryptedBoxSchema,
 				lastFrameLines().slice(1).join(""),
 			);
-			expect(decryptText(encryptedData, privateKey)).toEqual(textToEncrypt);
+			expect(decryptText(encryptedData, privateKey)).toStrictEqual(
+				textToEncrypt,
+			);
 		});
 	});
 
@@ -206,8 +225,8 @@ describe("encryption", () => {
 				<face.Component input={textToEncrypt} publicKey={publicKey} />,
 			);
 			await expect
-				.poll(lastFrameLines)
-				.toEqual([
+				.poll(() => lastFrameLines())
+				.toStrictEqual([
 					"+--------------------------------------------------------------------------------------------------+",
 					"|Hello <% enter your name %>, this is ...                                                          |",
 					"+--------------------------------------------------------------------------------------------------+",
@@ -216,8 +235,8 @@ describe("encryption", () => {
 				]);
 			await stdin.write("A");
 			await expect
-				.poll(lastFrameLines)
-				.toEqual([
+				.poll(() => lastFrameLines())
+				.toStrictEqual([
 					"+--------------------------------------------------------------------------------------------------+",
 					"|Hello <% enter your name %>, this is ...                                                          |",
 					"+--------------------------------------------------------------------------------------------------+",
@@ -228,7 +247,7 @@ describe("encryption", () => {
 			await stdin.writeLn("Bob");
 			const actual = lastFrameLines().slice(1).join("");
 			const encryptedData = await validate(encryptedBoxSchema, actual);
-			expect(decryptText(encryptedData, privateKey)).toEqual(
+			expect(decryptText(encryptedData, privateKey)).toStrictEqual(
 				textToEncrypt
 					.replace("<% enter your name %>", "Alice")
 					.replace("<% enter other name %>", "Bob"),
@@ -243,8 +262,8 @@ describe("encryption", () => {
 				<face.Component input={textToEncrypt} publicKey={publicKey} />,
 			);
 			await expect
-				.poll(lastFrameLines)
-				.toEqual([
+				.poll(() => lastFrameLines())
+				.toStrictEqual([
 					...withBox(
 						`Hello ${chalk.green("<% enter your name %>")}, this is ...`,
 						stdout.columns,
@@ -254,8 +273,8 @@ describe("encryption", () => {
 				]);
 			await stdin.writeLn("Alice");
 			await expect
-				.poll(lastFrameLines)
-				.toEqual([
+				.poll(() => lastFrameLines())
+				.toStrictEqual([
 					"✔️  [enter your name -> 5 symbol(s)]",
 					...withBox(
 						`..., this is ${chalk.green("<% enter other name %>")} and <% wh...`,
@@ -266,8 +285,8 @@ describe("encryption", () => {
 				]);
 			await stdin.writeLn("Bob");
 			await expect
-				.poll(lastFrameLines)
-				.toEqual([
+				.poll(() => lastFrameLines())
+				.toStrictEqual([
 					"✔️  [enter your name -> 5 symbol(s)]",
 					"✔️  [enter other name -> 3 symbol(s)]",
 					...withBox(
@@ -286,8 +305,8 @@ describe("encryption", () => {
 				<face.Component input={textToEncrypt} publicKey={publicKey} />,
 			);
 			await expect
-				.poll(lastFrameLines)
-				.toEqual([
+				.poll(() => lastFrameLines())
+				.toStrictEqual([
 					...withBox(
 						`${chalk.green("<% start %>")} and <% en...`,
 						stdout.columns,
@@ -297,8 +316,8 @@ describe("encryption", () => {
 				]);
 			await stdin.writeLn("Alice");
 			await expect
-				.poll(lastFrameLines)
-				.toEqual([
+				.poll(() => lastFrameLines())
+				.toStrictEqual([
 					"✔️  [start -> 5 symbol(s)]",
 					...withBox(
 						`...rt %> and ${chalk.green("<% end %>")}`,
@@ -323,8 +342,8 @@ describe("encryption", () => {
 			// Can move around frames
 			await stdin.leftArrow();
 			await expect
-				.poll(lastFrameLines)
-				.toEqual([
+				.poll(() => lastFrameLines())
+				.toStrictEqual([
 					"✔️  [enter your name -> 5 symbol(s)]",
 					chalk.green("✔️  [enter other name -> 3 symbol(s)]"),
 					"✔️  [what should we say? -> 7 symbol(s)]",
@@ -337,8 +356,8 @@ describe("encryption", () => {
 				]);
 			await stdin.rightArrow();
 			await expect
-				.poll(lastFrameLines)
-				.toEqual([
+				.poll(() => lastFrameLines())
+				.toStrictEqual([
 					"✔️  [enter your name -> 5 symbol(s)]",
 					"✔️  [enter other name -> 3 symbol(s)]",
 					chalk.green("✔️  [what should we say? -> 7 symbol(s)]"),
@@ -355,7 +374,7 @@ describe("encryption", () => {
 			await stdin.leftArrow();
 			const firstFrame = lastFrameLines();
 			await stdin.leftArrow();
-			expect(firstFrame).toEqual(lastFrameLines());
+			expect(firstFrame).toStrictEqual(lastFrameLines());
 
 			await stdin.rightArrow();
 
@@ -365,7 +384,7 @@ describe("encryption", () => {
 			await stdin.rightArrow();
 			const thirdFrame = lastFrameLines();
 			await stdin.rightArrow();
-			expect(thirdFrame).toEqual(lastFrameLines());
+			expect(thirdFrame).toStrictEqual(lastFrameLines());
 
 			await stdin.write("Charlie");
 			await stdin.rightArrow();
@@ -374,7 +393,7 @@ describe("encryption", () => {
 					const lines = lastFrameLines();
 					return lines.slice(0, 1);
 				})
-				.toEqual(["Encryption result:"]);
+				.toStrictEqual(["Encryption result:"]);
 		});
 	});
 });

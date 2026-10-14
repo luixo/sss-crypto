@@ -1,10 +1,16 @@
 import fs from "node:fs/promises";
 
+import { cleanup } from "ink-testing-library";
+import { act } from "react";
 import { afterEach, vi } from "vitest";
 
-vi.mock("node:fs");
-vi.mock("node:fs/promises");
+Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
+
+vi.mock(import("node:fs"));
+vi.mock(import("node:fs/promises"));
 
 afterEach(async () => {
-	await fs.rm("/", { recursive: true, force: true });
+	// oxlint-disable-next-line typescript/require-await
+	await act(async () => cleanup());
+	await fs.rm("/", { force: true, recursive: true });
 });

@@ -1,5 +1,5 @@
 import chalk from "chalk";
-import { test, describe, expect } from "vitest";
+import { describe, expect, test } from "vitest";
 
 import { face } from "~/faces/add-share";
 import { SHARE_LENGTH, SHARE_PREFIX_LENGTH } from "~/utils/consts";
@@ -17,16 +17,16 @@ describe("add share", () => {
 			const { privateKey } = await generatePair();
 			const threshold = 3;
 			const privateKeyShares = generateSharesFromKey(privateKey, {
-				threshold,
 				shares: 5,
+				threshold,
 			}).map((share) => serializeShare(share).replace("|", ""));
 
 			const { lastFrameLines, stdin } = await render(<face.Component />);
 			// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 			await stdin.writeLn(privateKeyShares[0]!);
 			await expect
-				.poll(lastFrameLines)
-				.toEqual([
+				.poll(() => lastFrameLines())
+				.toStrictEqual([
 					"Please input share #1",
 					chalk.green("(input of length 1605)"),
 					"Error: Share format is incorrect",
@@ -37,8 +37,8 @@ describe("add share", () => {
 			const { privateKey } = await generatePair();
 			const threshold = 3;
 			const privateKeyShares = generateSharesFromKey(privateKey, {
-				threshold,
 				shares: 5,
+				threshold,
 			}).map((share) =>
 				serializeShare({
 					...share,
@@ -53,24 +53,24 @@ describe("add share", () => {
 					.map((share) => async () => stdin.writeLn(share)),
 			);
 			await expect
-				.poll(lastFrameLines)
-				.toEqual([
+				.poll(() => lastFrameLines())
+				.toStrictEqual([
 					"Fatal error:",
 					"Can't combine shares, probably shares are corrupted",
 					'Press "Enter" to restart',
 				]);
 			await stdin.enter();
 			await expect
-				.poll(lastFrameLines)
-				.toEqual(["Please input share #1", chalk.red("(no input)")]);
+				.poll(() => lastFrameLines())
+				.toStrictEqual(["Please input share #1", chalk.red("(no input)")]);
 		});
 
 		test("malformed share format", async () => {
 			const { privateKey } = await generatePair();
 			const threshold = 3;
 			const privateKeyShares = generateSharesFromKey(privateKey, {
-				threshold,
 				shares: 5,
+				threshold,
 			}).map((share) =>
 				serializeShare({
 					...share,
@@ -81,18 +81,22 @@ describe("add share", () => {
 			const { lastFrameLines, stdin } = await render(<face.Component />);
 			// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 			await stdin.writeLn(privateKeyShares[0]!);
-			await expect.poll(lastFrameLines).toEqual([
-				"Please input share #1",
-				// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-				chalk.green(`(input of length ${privateKeyShares[0]!.length})`),
-				chalk.red("Error: Expected to have base64 for a share body"),
-			]);
+			await expect
+				.poll(() => lastFrameLines())
+				.toStrictEqual([
+					"Please input share #1",
+					// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+					chalk.green(`(input of length ${privateKeyShares[0]!.length})`),
+					chalk.red("Error: Expected to have base64 for a share body"),
+				]);
 			await stdin.backspace();
-			await expect.poll(lastFrameLines).toEqual([
-				"Please input share #1",
-				// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-				chalk.green(`(input of length ${privateKeyShares[0]!.length - 1})`),
-			]);
+			await expect
+				.poll(() => lastFrameLines())
+				.toStrictEqual([
+					"Please input share #1",
+					// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+					chalk.green(`(input of length ${privateKeyShares[0]!.length - 1})`),
+				]);
 		});
 
 		describe("incorrent share format", () => {
@@ -101,8 +105,8 @@ describe("add share", () => {
 				const corruptedShare = "3|05|anything";
 				await stdin.writeLn(corruptedShare);
 				await expect
-					.poll(lastFrameLines)
-					.toEqual([
+					.poll(() => lastFrameLines())
+					.toStrictEqual([
 						"Please input share #1",
 						chalk.green(`(input of length ${corruptedShare.length})`),
 						chalk.red("Error: Share format is incorrect"),
@@ -114,8 +118,8 @@ describe("add share", () => {
 				const corruptedShare = "foo";
 				await stdin.writeLn(corruptedShare);
 				await expect
-					.poll(lastFrameLines)
-					.toEqual([
+					.poll(() => lastFrameLines())
+					.toStrictEqual([
 						"Please input share #1",
 						chalk.green(`(input of length ${corruptedShare.length})`),
 						chalk.red("Error: Share format is incorrect"),
@@ -126,8 +130,8 @@ describe("add share", () => {
 		test("mixed thresholds in shares", async () => {
 			const { privateKey } = await generatePair();
 			const privateKeyShares = generateSharesFromKey(privateKey, {
-				threshold: 3,
 				shares: 5,
+				threshold: 3,
 			}).map((share, index) =>
 				serializeShare({ ...share, threshold: share.threshold + index }),
 			);
@@ -138,8 +142,8 @@ describe("add share", () => {
 			// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 			await stdin.writeLn(privateKeyShares[1]!);
 			await expect
-				.poll(lastFrameLines)
-				.toEqual([
+				.poll(() => lastFrameLines())
+				.toStrictEqual([
 					"Fatal error:",
 					"Expected all shares to have the same threshold, got 3 and 4",
 					'Press "Enter" to restart',
@@ -149,8 +153,11 @@ describe("add share", () => {
 
 	test("input length properly displayed", async () => {
 		const { lastFrameLines, stdin } = await render(<face.Component />);
-		const expectLastLine = async (lastLine: string) =>
-			expect.poll(lastFrameLines).toEqual(["Please input share #1", lastLine]);
+		const expectLastLine = async (lastLine: string) => {
+			await expect
+				.poll(() => lastFrameLines())
+				.toStrictEqual(["Please input share #1", lastLine]);
+		};
 		await expectLastLine(chalk.red("(no input)"));
 		await stdin.write("1");
 		await expectLastLine(chalk.green("(input of length 1)"));
@@ -169,15 +176,15 @@ describe("add share", () => {
 		const threshold = 2 + Math.floor(Math.random() * 100);
 		const { lastFrameLines, stdin } = await render(<face.Component />);
 		const s = serializeShare({
-			threshold,
 			bits: 8,
-			id: 1,
 			data: Buffer.from("a".repeat(SHARE_LENGTH * 0.75)).toString("base64"),
+			id: 1,
+			threshold,
 		});
 		await stdin.writeLn(s);
 		await expect
-			.poll(lastFrameLines)
-			.toEqual([
+			.poll(() => lastFrameLines())
+			.toStrictEqual([
 				"Input share #1 registered.",
 				`Please input share #2 (out of ${threshold})`,
 				chalk.red("(no input)"),
@@ -191,17 +198,17 @@ describe("add share", () => {
 			...Array.from({ length: threshold - 1 }).map((_, index) => async () => {
 				await stdin.writeLn(
 					serializeShare({
-						threshold,
 						bits: 8,
-						id: index + 1,
 						data: Buffer.from("a".repeat(SHARE_LENGTH * 0.75)).toString(
 							"base64",
 						),
+						id: index + 1,
+						threshold,
 					}),
 				);
 				await expect
-					.poll(lastFrameLines)
-					.toEqual([
+					.poll(() => lastFrameLines())
+					.toStrictEqual([
 						...Array.from({ length: index + 1 }).map(
 							(__, shareIndex) => `Input share #${shareIndex + 1} registered.`,
 						),
@@ -216,8 +223,8 @@ describe("add share", () => {
 		const { privateKey } = await generatePair();
 		const threshold = 3;
 		const privateKeyShares = generateSharesFromKey(privateKey, {
-			threshold,
 			shares: 5,
+			threshold,
 		}).map(serializeShare);
 
 		const { stdin, lastFrameLines } = await render(<face.Component />);
@@ -241,7 +248,7 @@ describe("add share", () => {
 					return lines;
 				});
 			})
-			.toEqual([
+			.toStrictEqual([
 				[
 					chalk.yellow(
 						"! Save this data, it will be erased when you close the terminal !",
@@ -258,8 +265,8 @@ describe("add share", () => {
 		const { privateKey, publicKey } = await generatePair();
 		const threshold = 3;
 		const privateKeyShares = generateSharesFromKey(privateKey, {
-			threshold,
 			shares: 5,
+			threshold,
 		}).map(serializeShare);
 
 		const { stdin, lastFrameLines } = await render(<face.Component />);
@@ -269,7 +276,7 @@ describe("add share", () => {
 				.map((privateKeyShare) => async () => stdin.writeLn(privateKeyShare)),
 		);
 
-		await expect.poll(() => lastFrameLines("\n\n").length).toEqual(2);
+		await expect.poll(() => lastFrameLines("\n\n").length).toStrictEqual(2);
 		const [, lastBlock] = lastFrameLines("\n\n");
 		const serializedShares = [
 			...privateKeyShares.slice(0, threshold - 1),
@@ -289,6 +296,6 @@ describe("add share", () => {
 				),
 			),
 		);
-		expect(textToEncrypt).toEqual(decryptedText);
+		expect(textToEncrypt).toStrictEqual(decryptedText);
 	});
 });

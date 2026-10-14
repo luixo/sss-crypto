@@ -1,6 +1,6 @@
-import { Text, Box, Newline } from "ink";
+import { Box, Newline, Text } from "ink";
 import * as React from "react";
-import z from "zod";
+import { z } from "zod";
 
 import { SharesInput } from "~/components/shares-input";
 import type { Face } from "~/faces/types";
@@ -18,29 +18,34 @@ const getDecryptedText = (
 	const privateKey = sharesToPrivateKey(shares);
 	try {
 		return decryptText(encryptedData, privateKey);
-	} catch (e) {
+	} catch (error) {
 		if (
-			typeof e === "object" &&
-			e &&
-			"code" in e &&
-			typeof e.code === "string" &&
-			e.code.startsWith("ERR_OSSL")
+			typeof error === "object" &&
+			error &&
+			"code" in error &&
+			typeof error.code === "string" &&
+			error.code.startsWith("ERR_OSSL")
 		) {
-			throw new Error(`Can't decrypt text, probably text is corrupt.`);
+			throw new Error(`Can't decrypt text, probably text is corrupt.`, {
+				cause: error,
+			});
 		}
 		if (
-			typeof e === "object" &&
-			e &&
-			"message" in e &&
-			typeof e.message === "string" &&
-			e.message === "Unsupported state or unable to authenticate data"
+			typeof error === "object" &&
+			error &&
+			"message" in error &&
+			typeof error.message === "string" &&
+			error.message === "Unsupported state or unable to authenticate data"
 		) {
 			throw new Error(
 				`Can't decrypt text, probably initial vector or auth tag is corrupt.`,
+				{
+					cause: error,
+				},
 			);
 			/* c8 ignore next 3 */
 		}
-		throw e;
+		throw error;
 	}
 };
 
@@ -56,8 +61,8 @@ type Stage =
 const Decrypt: React.FC<Props> = ({ encryptedData }) => {
 	const [stage, setStage] = React.useState<Stage>({ type: "input" });
 	const sharesKey = useResetKey({
-		onReset: () => setStage({ type: "input" }),
 		isActive: stage.type === "error",
+		onReset: () => setStage({ type: "input" }),
 	});
 	useKeepAlive(stage.type === "input");
 	switch (stage.type) {
@@ -65,16 +70,15 @@ const Decrypt: React.FC<Props> = ({ encryptedData }) => {
 			return (
 				<SharesInput
 					key={sharesKey}
-					onError={(message) => setStage({ type: "error", message })}
+					onError={(message) => setStage({ message, type: "error" })}
 					onDone={(shares) => {
 						try {
 							const decryptedText = getDecryptedText(encryptedData, shares);
-							setStage({ type: "result", result: decryptedText });
-						} catch (e) {
+							setStage({ result: decryptedText, type: "result" });
+						} catch (error) {
 							setStage({
+								message: error instanceof Error ? error.message : String(error),
 								type: "error",
-								/* c8 ignore next */
-								message: e instanceof Error ? e.message : String(e),
 							});
 						}
 					}}
@@ -111,7 +115,7 @@ const Decrypt: React.FC<Props> = ({ encryptedData }) => {
 const schema = z
 	.object({
 		input: existingFileSchema
-			.refine((input) => input.length > 0, {
+			.refine((input) => input.length !== 0, {
 				error: "Input should not be empty to decrypt.",
 			})
 			.transform((input) => input.toString())
