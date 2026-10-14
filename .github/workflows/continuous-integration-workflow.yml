@@ -6,8 +6,8 @@ on:
       - main
 
 jobs:
-  prettier:
-    name: Prettier
+  format:
+    name: Format
     runs-on: ubuntu-26.04
     steps:
       - uses: actions/checkout@v7

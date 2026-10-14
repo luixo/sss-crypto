@@ -1,82 +1,79 @@
 {
-  "name": "sss-crypto",
-  "version": "0.0.0",
-  "private": true,
-  "type": "module",
-  "main": "index.ts",
-  "scripts": {
-    "start": "node --import=tsx src/index.tsx",
-    "test": "vitest",
-    "typecheck": "bun check",
-    "format": "prettier --write '**/*.{js,ts,tsx,json}'",
-    "format:verify": "prettier --check '**/*.{js,ts,tsx,json}'",
-    "lint": "eslint . --ext .ts,.tsx",
-    "lint:fix": "eslint --fix . --ext .ts,.tsx",
-    "lint-staged": "lint-staged"
-  },
-  "dependencies": {
-    "chalk": "^5.5.0",
-    "cmd-ts": "^0.13.0",
-    "ink": "^6.1.0",
-    "prettier": "^3.6.2",
-    "react": "^19.1.1",
-    "secrets.js": "git+https://git@github.com/grempe/secrets.js.git",
-    "tsx": "^4.20.3",
-    "zod": "^4.0.17"
-  },
-  "devDependencies": {
-    "@eslint/js": "^9.32.0",
-    "@standard-schema/spec": "^1.0.0",
-    "@stylistic/eslint-plugin": "^5.2.3",
-    "@types/eslint-plugin-jsx-a11y": "^6.10.0",
-    "@types/node": "^24.2.1",
-    "@types/react": "^19.1.9",
-    "@typescript-eslint/eslint-plugin": "^8.39.1",
-    "@typescript-eslint/parser": "^8.39.1",
-    "@vitest/coverage-v8": "^3.2.4",
-    "eslint": "^9.33.0",
-    "eslint-config-airbnb-extended": "^2.1.2",
-    "eslint-config-prettier": "^10.1.8",
-    "eslint-import-resolver-typescript": "^4.4.4",
-    "eslint-plugin-import-x": "^4.16.1",
-    "eslint-plugin-jsx-a11y": "^6.10.2",
-    "eslint-plugin-n": "^17.21.3",
-    "eslint-plugin-react": "^7.37.5",
-    "eslint-plugin-react-hooks": "^6.0.0-rc.1",
-    "eslint-plugin-unicorn": "^60.0.0",
-    "eslint-plugin-vitest": "^0.5.4",
-    "globals": "^16.3.0",
-    "ink-testing-library": "^4.0.0",
-    "jiti": "^2.5.1",
-    "jsonc-eslint-parser": "^2.4.0",
-    "lint-staged": "^16.1.5",
-    "memfs": "^4.36.0",
-    "pre-commit": "^1.2.2",
-    "strip-ansi": "^7.1.0",
-    "typescript": "^5.9.2",
-    "typescript-eslint": "^8.39.1",
-    "vite-tsconfig-paths": "^5.1.4",
-    "vitest": "^3.2.4"
-  },
-  "lint-staged": {
-    "*.{j,t}s{,x}": [
-      "prettier --write",
-      "eslint --fix"
-    ]
-  },
-  "pre-commit": [
-    "typecheck",
-    "format",
-    "lint-staged"
-  ],
-  "engines": {
-    "node": "26"
-  },
-  "packageManager": "bun@1.4.3",
-  "patchedDependencies": {
-    "cmd-ts@0.13.0": "patches/cmd-ts-npm-0.13.0.patch"
-  },
-  "trustedDependencies": [
-    "pre-commit"
-  ]
+	"name": "sss-crypto",
+	"version": "0.0.0",
+	"private": true,
+	"type": "module",
+	"main": "index.ts",
+	"scripts": {
+		"start": "node --import=tsx src/index.tsx",
+		"test": "vitest",
+		"typecheck": "bun check",
+		"format": "oxfmt --write",
+		"format:verify": "oxfmt --check",
+		"lint": "eslint . --ext .ts,.tsx",
+		"lint:fix": "eslint --fix . --ext .ts,.tsx",
+		"lint-staged": "lint-staged"
+	},
+	"dependencies": {
+		"chalk": "^5.5.0",
+		"cmd-ts": "^0.13.0",
+		"ink": "^6.1.0",
+		"react": "^19.1.1",
+		"secrets.js": "git+https://git@github.com/grempe/secrets.js.git",
+		"tsx": "^4.20.3",
+		"zod": "^4.0.17"
+	},
+	"devDependencies": {
+		"@eslint/js": "^9.32.0",
+		"@luixo/configs": "0.1.0",
+		"@standard-schema/spec": "^1.0.0",
+		"@stylistic/eslint-plugin": "^5.2.3",
+		"@types/eslint-plugin-jsx-a11y": "^6.10.0",
+		"@types/node": "^24.2.1",
+		"@types/react": "^19.1.9",
+		"@typescript-eslint/eslint-plugin": "^8.39.1",
+		"@typescript-eslint/parser": "^8.39.1",
+		"@vitest/coverage-v8": "^3.2.4",
+		"eslint": "^9.33.0",
+		"eslint-config-airbnb-extended": "^2.1.2",
+		"eslint-config-prettier": "^10.1.8",
+		"eslint-import-resolver-typescript": "^4.4.4",
+		"eslint-plugin-import-x": "^4.16.1",
+		"eslint-plugin-jsx-a11y": "^6.10.2",
+		"eslint-plugin-n": "^17.21.3",
+		"eslint-plugin-react": "^7.37.5",
+		"eslint-plugin-react-hooks": "^6.0.0-rc.1",
+		"eslint-plugin-unicorn": "^60.0.0",
+		"eslint-plugin-vitest": "^0.5.4",
+		"globals": "^16.3.0",
+		"ink-testing-library": "^4.0.0",
+		"jiti": "^2.5.1",
+		"jsonc-eslint-parser": "^2.4.0",
+		"lint-staged": "^16.1.5",
+		"memfs": "^4.36.0",
+		"oxfmt": "0.73.0",
+		"pre-commit": "^1.2.2",
+		"strip-ansi": "^7.1.0",
+		"typescript": "^5.9.2",
+		"typescript-eslint": "^8.39.1",
+		"vite-tsconfig-paths": "^5.1.4",
+		"vitest": "^3.2.4"
+	},
+	"lint-staged": {
+		"*.{j,t}s{,x}": [
+			"eslint --fix"
+		]
+	},
+	"pre-commit": [
+		"typecheck",
+		"format",
+		"lint-staged"
+	],
+	"packageManager": "bun@1.4.3",
+	"patchedDependencies": {
+		"cmd-ts@0.13.0": "patches/cmd-ts-npm-0.13.0.patch"
+	},
+	"trustedDependencies": [
+		"pre-commit"
+	]
 }

@@ -1,59 +1,60 @@
-import * as React from "react";
 import { Text, Box, Newline } from "ink";
+import * as React from "react";
+
+import { HiddenInput } from "~/components/hidden-input";
+import { useKeepAlive } from "~/hooks/use-keep-alive";
 import type { ShareObject } from "~/utils/shares";
 import { shareObjectSchema } from "~/utils/shares";
-import { useKeepAlive } from "~/hooks/use-keep-alive";
-import { HiddenInput } from "~/components/hidden-input";
 
 type Props = {
-  onDone: (shares: ShareObject[]) => void;
-  onError: (message: string) => void;
+	onDone: (shares: ShareObject[]) => void;
+	onError: (message: string) => void;
 };
 
 export const SharesInput: React.FC<Props> = ({ onDone, onError }) => {
-  const [threshold, setThreshold] = React.useState<number | undefined>();
-  const [shares, setShares] = React.useState<ShareObject[]>([]);
-  const onShareInput = React.useCallback(
-    async (share: ShareObject) => {
-      if (threshold && threshold !== share.threshold) {
-        onError(
-          `Expected all shares to have the same threshold, got ${threshold} and ${share.threshold}`,
-        );
-        return;
-      }
-      setThreshold((prevThreshold) => prevThreshold ?? share.threshold);
-      setShares((prevShares) => [...prevShares, share]);
-    },
-    [threshold, onError],
-  );
-  React.useEffect(() => {
-    if (shares.length === threshold) {
-      onDone(shares);
-    }
-  }, [shares, threshold, onDone]);
-  useKeepAlive();
-  return (
-    <Box flexDirection="column">
-      {Array.from({ length: shares.length }).map((_, index) => (
-        // eslint-disable-next-line react/no-array-index-key
-        <Box key={index}>
-          <Text>Input share #{index + 1} registered.</Text>
-        </Box>
-      ))}
-      <Text>
-        <Text>
-          Please input share #{shares.length + 1}
-          {threshold ? ` (out of ${threshold})` : ""}
-        </Text>
-        <Newline />
-        <HiddenInput
-          key={shares.length}
-          schema={shareObjectSchema}
-          onDone={
-            onShareInput as React.ComponentProps<typeof HiddenInput>["onDone"]
-          }
-        />
-      </Text>
-    </Box>
-  );
+	const [threshold, setThreshold] = React.useState<number | undefined>();
+	const [shares, setShares] = React.useState<ShareObject[]>([]);
+	const onShareInput = React.useCallback(
+		async (share: ShareObject) => {
+			if (threshold && threshold !== share.threshold) {
+				onError(
+					`Expected all shares to have the same threshold, got ${threshold} and ${share.threshold}`,
+				);
+				return;
+			}
+			setThreshold((prevThreshold) => prevThreshold ?? share.threshold);
+			setShares((prevShares) => [...prevShares, share]);
+		},
+		[threshold, onError],
+	);
+	React.useEffect(() => {
+		if (shares.length === threshold) {
+			onDone(shares);
+		}
+	}, [shares, threshold, onDone]);
+	useKeepAlive();
+	return (
+		<Box flexDirection="column">
+			{Array.from({ length: shares.length }).map((_, index) => (
+				// eslint-disable-next-line react/no-array-index-key
+				<Box key={index}>
+					<Text>Input share #{index + 1} registered.</Text>
+				</Box>
+			))}
+			<Text>
+				<Text>
+					Please input share #{shares.length + 1}
+					{threshold ? ` (out of ${threshold})` : ""}
+				</Text>
+				<Newline />
+				<HiddenInput
+					key={shares.length}
+					schema={shareObjectSchema}
+					onDone={
+						onShareInput as React.ComponentProps<typeof HiddenInput>["onDone"]
+					}
+				/>
+			</Text>
+		</Box>
+	);
 };

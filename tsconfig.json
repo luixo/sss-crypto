@@ -1,23 +1,23 @@
 {
-  "compilerOptions": {
-    "strict": true,
-    "strictNullChecks": true,
-    "noUncheckedIndexedAccess": true,
-    "useUnknownInCatchVariables": true,
-    "module": "esnext",
-    "jsx": "react-jsx",
-    "esModuleInterop": true,
-    "moduleResolution": "bundler",
-    "allowSyntheticDefaultImports": true,
-    "allowJs": false,
-    "lib": ["ESNext"],
-    "noEmit": true,
-    "resolveJsonModule": true,
-    "skipLibCheck": true,
-    "target": "ESNext",
-    "paths": {
-      "~/*": ["./src/*"]
-    }
-  },
-  "include": ["**/*"]
+	"compilerOptions": {
+		"strict": true,
+		"strictNullChecks": true,
+		"noUncheckedIndexedAccess": true,
+		"useUnknownInCatchVariables": true,
+		"module": "esnext",
+		"jsx": "react-jsx",
+		"esModuleInterop": true,
+		"moduleResolution": "bundler",
+		"allowSyntheticDefaultImports": true,
+		"allowJs": false,
+		"lib": ["ESNext"],
+		"noEmit": true,
+		"resolveJsonModule": true,
+		"skipLibCheck": true,
+		"target": "ESNext",
+		"paths": {
+			"~/*": ["./src/*"]
+		}
+	},
+	"include": ["**/*"]
 }

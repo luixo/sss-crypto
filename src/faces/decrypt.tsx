@@ -1,124 +1,125 @@
-import * as React from "react";
 import { Text, Box, Newline } from "ink";
+import * as React from "react";
 import z from "zod";
-import type { ShareObject } from "~/utils/shares";
-import { decryptText, encryptedBoxSchema } from "~/utils/crypto";
+
+import { SharesInput } from "~/components/shares-input";
 import type { Face } from "~/faces/types";
 import { useKeepAlive } from "~/hooks/use-keep-alive";
-import { SharesInput } from "~/components/shares-input";
 import { useResetKey } from "~/hooks/use-reset-key";
 import { sharesToPrivateKey } from "~/utils/converters";
+import { decryptText, encryptedBoxSchema } from "~/utils/crypto";
 import { existingFileSchema } from "~/utils/schemas";
+import type { ShareObject } from "~/utils/shares";
 
 const getDecryptedText = (
-  encryptedData: z.infer<typeof encryptedBoxSchema>,
-  shares: ShareObject[],
+	encryptedData: z.infer<typeof encryptedBoxSchema>,
+	shares: ShareObject[],
 ): string => {
-  const privateKey = sharesToPrivateKey(shares);
-  try {
-    return decryptText(encryptedData, privateKey);
-  } catch (e) {
-    if (
-      typeof e === "object" &&
-      e &&
-      "code" in e &&
-      typeof e.code === "string" &&
-      e.code.startsWith("ERR_OSSL")
-    ) {
-      throw new Error(`Can't decrypt text, probably text is corrupt.`);
-    }
-    if (
-      typeof e === "object" &&
-      e &&
-      "message" in e &&
-      typeof e.message === "string" &&
-      e.message === "Unsupported state or unable to authenticate data"
-    ) {
-      throw new Error(
-        `Can't decrypt text, probably initial vector or auth tag is corrupt.`,
-      );
-      /* c8 ignore next 3 */
-    }
-    throw e;
-  }
+	const privateKey = sharesToPrivateKey(shares);
+	try {
+		return decryptText(encryptedData, privateKey);
+	} catch (e) {
+		if (
+			typeof e === "object" &&
+			e &&
+			"code" in e &&
+			typeof e.code === "string" &&
+			e.code.startsWith("ERR_OSSL")
+		) {
+			throw new Error(`Can't decrypt text, probably text is corrupt.`);
+		}
+		if (
+			typeof e === "object" &&
+			e &&
+			"message" in e &&
+			typeof e.message === "string" &&
+			e.message === "Unsupported state or unable to authenticate data"
+		) {
+			throw new Error(
+				`Can't decrypt text, probably initial vector or auth tag is corrupt.`,
+			);
+			/* c8 ignore next 3 */
+		}
+		throw e;
+	}
 };
 
 type Props = {
-  encryptedData: z.infer<typeof encryptedBoxSchema>;
+	encryptedData: z.infer<typeof encryptedBoxSchema>;
 };
 
 type Stage =
-  | { type: "input" }
-  | { type: "result"; result: string }
-  | { type: "error"; message: string };
+	| { type: "input" }
+	| { type: "result"; result: string }
+	| { type: "error"; message: string };
 
 const Decrypt: React.FC<Props> = ({ encryptedData }) => {
-  const [stage, setStage] = React.useState<Stage>({ type: "input" });
-  const sharesKey = useResetKey({
-    onReset: () => setStage({ type: "input" }),
-    isActive: stage.type === "error",
-  });
-  useKeepAlive(stage.type === "input");
-  switch (stage.type) {
-    case "input": {
-      return (
-        <SharesInput
-          key={sharesKey}
-          onError={(message) => setStage({ type: "error", message })}
-          onDone={(shares) => {
-            try {
-              const decryptedText = getDecryptedText(encryptedData, shares);
-              setStage({ type: "result", result: decryptedText });
-            } catch (e) {
-              setStage({
-                type: "error",
-                /* c8 ignore next */
-                message: e instanceof Error ? e.message : String(e),
-              });
-            }
-          }}
-        />
-      );
-    }
-    case "result": {
-      return (
-        <Box>
-          <Text>
-            <Text>Decrypt result:</Text>
-            <Newline />
-            <Text>{stage.result}</Text>
-          </Text>
-        </Box>
-      );
-    }
-    case "error": {
-      return (
-        <Box>
-          <Text>
-            <Text>Fatal error:</Text>
-            <Newline />
-            <Text>{stage.message}</Text>
-            <Newline />
-            <Text>{`Press "Enter" to restart`}</Text>
-          </Text>
-        </Box>
-      );
-    }
-  }
+	const [stage, setStage] = React.useState<Stage>({ type: "input" });
+	const sharesKey = useResetKey({
+		onReset: () => setStage({ type: "input" }),
+		isActive: stage.type === "error",
+	});
+	useKeepAlive(stage.type === "input");
+	switch (stage.type) {
+		case "input": {
+			return (
+				<SharesInput
+					key={sharesKey}
+					onError={(message) => setStage({ type: "error", message })}
+					onDone={(shares) => {
+						try {
+							const decryptedText = getDecryptedText(encryptedData, shares);
+							setStage({ type: "result", result: decryptedText });
+						} catch (e) {
+							setStage({
+								type: "error",
+								/* c8 ignore next */
+								message: e instanceof Error ? e.message : String(e),
+							});
+						}
+					}}
+				/>
+			);
+		}
+		case "result": {
+			return (
+				<Box>
+					<Text>
+						<Text>Decrypt result:</Text>
+						<Newline />
+						<Text>{stage.result}</Text>
+					</Text>
+				</Box>
+			);
+		}
+		case "error": {
+			return (
+				<Box>
+					<Text>
+						<Text>Fatal error:</Text>
+						<Newline />
+						<Text>{stage.message}</Text>
+						<Newline />
+						<Text>{`Press "Enter" to restart`}</Text>
+					</Text>
+				</Box>
+			);
+		}
+	}
 };
 
 const schema = z
-  .object({
-    input: existingFileSchema
-      .refine((input) => input.length > 0, {
-        error: "Input should not be empty to decrypt.",
-      })
-      .transform((input) => input.toString())
-      .pipe(encryptedBoxSchema),
-  })
-  .transform(({ input }) => ({ encryptedData: input }));
+	.object({
+		input: existingFileSchema
+			.refine((input) => input.length > 0, {
+				error: "Input should not be empty to decrypt.",
+			})
+			.transform((input) => input.toString())
+			.pipe(encryptedBoxSchema),
+	})
+	.transform(({ input }) => ({ encryptedData: input }));
 
 export const face: Face<Props, z.input<typeof schema>> = {
-  Component: Decrypt,
-  schema,
+	Component: Decrypt,
+	schema,
 };
