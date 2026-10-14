@@ -1,22 +1,18 @@
 {
-  "version": "0.0.0",
   "name": "sss-crypto",
+  "version": "0.0.0",
   "private": true,
-  "main": "index.ts",
   "type": "module",
-  "packageManager": "yarn@4.1.0",
+  "main": "index.ts",
   "scripts": {
     "start": "node --import=tsx src/index.tsx",
     "test": "vitest",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "bun check",
     "format": "prettier --write '**/*.{js,ts,tsx,json}'",
     "format:verify": "prettier --check '**/*.{js,ts,tsx,json}'",
     "lint": "eslint . --ext .ts,.tsx",
     "lint:fix": "eslint --fix . --ext .ts,.tsx",
     "lint-staged": "lint-staged"
-  },
-  "resolutions": {
-    "cmd-ts": "patch:cmd-ts@npm%3A0.13.0#~/patches/cmd-ts-npm-0.13.0.patch"
   },
   "dependencies": {
     "chalk": "^5.5.0",
@@ -62,20 +58,25 @@
     "vite-tsconfig-paths": "^5.1.4",
     "vitest": "^3.2.4"
   },
-  "pre-commit": [
-    "typecheck",
-    "lint-staged"
-  ],
-  "prettier": {
-    "trailingComma": "all",
-    "tabWidth": 2,
-    "semi": true,
-    "singleQuote": false
-  },
   "lint-staged": {
     "*.{j,t}s{,x}": [
       "prettier --write",
       "eslint --fix"
     ]
-  }
+  },
+  "pre-commit": [
+    "typecheck",
+    "format",
+    "lint-staged"
+  ],
+  "engines": {
+    "node": "26"
+  },
+  "packageManager": "bun@1.4.3",
+  "patchedDependencies": {
+    "cmd-ts@0.13.0": "patches/cmd-ts-npm-0.13.0.patch"
+  },
+  "trustedDependencies": [
+    "pre-commit"
+  ]
 }

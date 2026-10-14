@@ -8,41 +8,41 @@ on:
 jobs:
   prettier:
     name: Prettier
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: ./.github/actions/setup-env
       - name: Run code formatting verification
-        run: yarn format:verify
+        run: bun run format:verify
 
   typecheck:
     name: Typecheck
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: ./.github/actions/setup-env
       - name: Run typecheck
-        run: yarn typecheck
+        run: bun run typecheck
 
   linter:
     name: Linter
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: ./.github/actions/setup-env
       - name: Run linter
-        run: yarn lint
+        run: bun run lint
 
   test:
     name: Tests
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     outputs:
       coverage: ${{ steps.coverage-percent.outputs.coverage }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: ./.github/actions/setup-env
       - name: Run tests
-        run: yarn test
+        run: bun run test
       - name: Archive code coverage results
         uses: actions/upload-artifact@v4
         with:
@@ -59,7 +59,7 @@ jobs:
 
   update-badge:
     name: Badge
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     needs: test
     steps:
       - name: Coverage badge
@@ -78,9 +78,9 @@ jobs:
 
   backup-to-s3:
     name: Backup repository to S3
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - run: mkdir backups
       - name: Bundle git
         run: git bundle create backups/sss-crypto.bundle HEAD main
