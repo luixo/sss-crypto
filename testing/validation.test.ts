@@ -1,6 +1,9 @@
+import fs from "node:fs/promises";
+
 import { expect, test } from "vitest";
 
-import { mapArgErrors } from "~/utils/validation";
+import { existingFileSchema } from "~/utils/schemas";
+import { mapArgErrors, validate } from "~/utils/validation";
 
 test("argument errors format structured path segments by their keys", () => {
 	expect(
@@ -11,4 +14,12 @@ test("argument errors format structured path segments by their keys", () => {
 			},
 		]),
 	).toBe('Arg "shares.2.Symbol(id)" error: Invalid value');
+});
+
+test("file validation preserves errors other than a missing file", async () => {
+	await fs.mkdir("dir", { recursive: true });
+	await fs.writeFile("dir/file", "data");
+	await expect(validate(existingFileSchema, "dir/file/child")).rejects.toThrow(
+		"ENOTDIR",
+	);
 });

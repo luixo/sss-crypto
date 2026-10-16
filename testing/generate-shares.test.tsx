@@ -173,9 +173,10 @@ describe("shares generation", () => {
 
 	test("no pub key file path", async () => {
 		const sharesAmount = 5;
-		const { lastFrameLines } = await render(
-			<face.Component shares={sharesAmount} threshold={3} />,
-		);
+		const { lastFrameLines } = await renderGeneratedShares({
+			shares: sharesAmount,
+			threshold: 3,
+		});
 		await expect
 			.poll(() => {
 				const [warningBlock, publicKeyBlock, ...sharesBlock] =
@@ -225,13 +226,11 @@ describe("shares generation", () => {
 	test("with pub key file path", async () => {
 		const pubKeyPath = "pub.key";
 		const sharesAmount = 5;
-		const { lastFrameLines } = await render(
-			<face.Component
-				pubKeyFilePath={pubKeyPath}
-				shares={sharesAmount}
-				threshold={3}
-			/>,
-		);
+		const { lastFrameLines } = await renderGeneratedShares({
+			pubKeyFilePath: pubKeyPath,
+			shares: sharesAmount,
+			threshold: 3,
+		});
 		await expect
 			.poll(() => {
 				const [warningBlock, publicKeyBlock, ...sharesBlock] =
@@ -278,9 +277,10 @@ describe("shares generation", () => {
 
 	test("verify shares can decrypt data", async () => {
 		const sharesAmount = 5;
-		const { lastFrameLines } = await render(
-			<face.Component shares={sharesAmount} threshold={3} />,
-		);
+		const { lastFrameLines } = await renderGeneratedShares({
+			shares: sharesAmount,
+			threshold: 3,
+		});
 
 		await expect.poll(() => lastFrameLines("\n\n").length).toStrictEqual(7);
 		const [, publicKeyBlock, ...sharesBlocks] = lastFrameLines("\n\n");

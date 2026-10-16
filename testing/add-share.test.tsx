@@ -42,7 +42,7 @@ describe("add share", () => {
 			}).map((share) =>
 				serializeShare({
 					...share,
-					data: share.data.startsWith("a") ? "b" : `a${share.data.slice(1)}`,
+					data: `${share.data.startsWith("a") ? "b" : "a"}${share.data.slice(1)}`,
 				}),
 			);
 

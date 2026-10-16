@@ -93,7 +93,7 @@ const Encrypt: React.FC<Props> = ({ input: initialInput, publicKey }) => {
 				return;
 			}
 			setStage((prevStage) => {
-				/* c8 ignore next 3 */
+				/* v8 ignore if -- @preserve: stale input callback after a stage transition */
 				if (prevStage.type !== "input") {
 					return prevStage;
 				}
@@ -105,7 +105,7 @@ const Encrypt: React.FC<Props> = ({ input: initialInput, publicKey }) => {
 	const onArrow = React.useCallback(
 		(type: "left" | "right", text: string) => {
 			setStage((prevStage) => {
-				/* c8 ignore next 3 */
+				/* v8 ignore if -- @preserve: stale arrow callback after a stage transition */
 				if (prevStage.type !== "substitutes") {
 					return prevStage;
 				}

@@ -38,8 +38,8 @@
 		"pre-commit": "^1.2.2",
 		"strip-ansi": "^7.1.0",
 		"typescript": "^5.9.2",
-		"vite-tsconfig-paths": "^5.1.4",
-		"vitest": "^3.2.4"
+		"vite-tsconfig-paths": "^6.1.1",
+		"vitest": "^5.0.5"
 	},
 	"lint-staged": {
 		"*.{j,t}s{,x}": [

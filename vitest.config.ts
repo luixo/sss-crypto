@@ -9,8 +9,8 @@ export default defineConfig({
 			enabled: true,
 			exclude: [
 				...(configDefaults.coverage.exclude ?? []),
-				"__mocks__",
-				"testing",
+				"__mocks__/**",
+				"testing/**",
 				"oxfmt.config.ts",
 				"oxlint.config.ts",
 			],

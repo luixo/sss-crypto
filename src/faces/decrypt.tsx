@@ -43,7 +43,6 @@ const getDecryptedText = (
 					cause: error,
 				},
 			);
-			/* c8 ignore next 3 */
 		}
 		throw error;
 	}

@@ -31,7 +31,6 @@ export const publicKeyTransform = (
 				input: buffer,
 				message: "Can't read public key, probably data is corrupted.",
 			});
-			/* c8 ignore next 7 */
 		} else {
 			ctx.issues.push({
 				code: "custom",
