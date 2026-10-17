@@ -180,10 +180,8 @@ describe("encryption", () => {
 		});
 
 		test("long text", async () => {
-			const array = new Uint8Array(10 * 1024);
-			const textToEncrypt = new TextDecoder().decode(
-				crypto.getRandomValues(array).buffer,
-			);
+			// Terminal input interprets control characters as keys, not literal text.
+			const textToEncrypt = "Hello, 世界! 🔐 ".repeat(1024);
 			const { publicKey, privateKey } = await generatePair();
 			const { lastFrameLines, stdin } = await render(
 				<face.Component publicKey={publicKey} />,

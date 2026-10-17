@@ -1,5 +1,6 @@
 import chalk from "chalk";
 import { dryRun, parse } from "cmd-ts";
+import { render as renderInk } from "ink";
 import { render as renderTesting } from "ink-testing-library";
 import { act } from "react";
 import { assert, describe, expect, test, vi } from "vitest";
@@ -25,7 +26,12 @@ const testPrivateKey = {
 
 vi.mock(import("ink"), async (importActual) => ({
 	...(await importActual()),
-	render: (tree) => {
+	render: vi.fn<typeof renderInk>(),
+}));
+
+const createTestTerminal = () => {
+	let finalFrame: string | undefined = undefined;
+	vi.mocked(renderInk).mockImplementationOnce((tree) => {
 		// oxlint-disable-next-line init-declarations
 		let result!: ReturnType<typeof renderTesting>;
 		act(() => {
@@ -40,6 +46,7 @@ vi.mock(import("ink"), async (importActual) => ({
 				await act(async () => {
 					/* empty */
 				});
+				finalFrame = result.lastFrame();
 				// oxlint-disable-next-line typescript/require-await
 				await act(async () => result.unmount());
 			},
@@ -49,8 +56,9 @@ vi.mock(import("ink"), async (importActual) => ({
 				});
 			},
 		};
-	},
-}));
+	});
+	return { finalFrame: () => finalFrame };
+};
 vi.mock(import("node:crypto"), async (importActual) => {
 	const actualModule = await importActual();
 	return {
@@ -298,12 +306,13 @@ describe("general", () => {
 	});
 
 	test("runs", async () => {
+		const terminal = createTestTerminal();
 		const cli = createProgram();
 		const result = await dryRun(cli, "generate-shares -n 5 -k 3".split(" "));
 		// eslint-disable-next-line no-underscore-dangle
 		assert(result._tag === "ok");
-		const frame = await result.value.value;
-		expect(frame).toMatchInlineSnapshot(`
+		await result.value.value;
+		expect(terminal.finalFrame()).toMatchInlineSnapshot(`
       "${chalk.yellow("! Save this data, it will be erased when you close the terminal !")}
 
       ${chalk.cyan("Public key")}
@@ -334,5 +343,19 @@ describe("general", () => {
 
       "
     `);
+	});
+
+	test("keeps terminal frames isolated", async () => {
+		const firstTerminal = createTestTerminal();
+		await dryRun(createProgram(), "generate-shares -n 3 -k 2".split(" "));
+		const firstFrame = firstTerminal.finalFrame();
+		expect(firstFrame).toContain("Share #3");
+		expect(firstFrame).not.toContain("Share #4");
+
+		const secondTerminal = createTestTerminal();
+		expect(secondTerminal.finalFrame()).toBeUndefined();
+		await dryRun(createProgram(), "generate-shares -n 4 -k 2".split(" "));
+		expect(secondTerminal.finalFrame()).toContain("Share #4");
+		expect(firstTerminal.finalFrame()).toBe(firstFrame);
 	});
 });
